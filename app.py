@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import pandas as pd
+import re
 from datetime import date
 from dotenv import load_dotenv
 
@@ -161,27 +162,37 @@ with st.sidebar:
     # Display Leagues and Matches
     if 'fixtures' in st.session_state:
         fixtures = st.session_state['fixtures']
-        leagues = sorted(list(set([f['league']['name'] for f in fixtures])))
         
-        st.markdown("### 🏆 Bajnokságok")
-        for league in leagues:
-            league_fixtures = [f for f in fixtures if f['league']['name'] == league]
-            # Expander for each league
-            with st.expander(f"{league} ({len(league_fixtures)})"):
-                for f in league_fixtures:
-                    try:
-                        match_time = pd.to_datetime(f['fixture']['date']).strftime('%H:%M')
-                    except:
-                        match_time = "??"
+        # Group by Country
+        countries = sorted(list(set([f['league']['country'] for f in fixtures])))
+        
+        st.markdown("### 🌍 Mérkőzések")
+        for country in countries:
+            country_fixtures = [f for f in fixtures if f['league']['country'] == country]
+            
+            # Expander for Country
+            with st.expander(f"{country} ({len(country_fixtures)})"):
+                # Group by League inside Country
+                leagues = sorted(list(set([f['league']['name'] for f in country_fixtures])))
+                
+                for league in leagues:
+                    st.markdown(f"**🏆 {league}**")
+                    league_fixtures = [f for f in country_fixtures if f['league']['name'] == league]
                     
-                    # Button for each match
-                    btn_label = f"{match_time} | {f['teams']['home']['name']} vs {f['teams']['away']['name']}"
-                    if st.button(btn_label, key=f"btn_{f['fixture']['id']}", use_container_width=True):
-                         st.session_state['current_match_obj'] = f
-                         # Clear previous analysis if switching match
-                         if 'analysis_results' in st.session_state:
-                             del st.session_state['analysis_results']
-                         st.rerun()
+                    for f in league_fixtures:
+                        try:
+                            match_time = pd.to_datetime(f['fixture']['date']).strftime('%H:%M')
+                        except:
+                            match_time = "??"
+                        
+                        # Button for each match
+                        btn_label = f"⏰ {match_time} | {f['teams']['home']['name']} vs {f['teams']['away']['name']}"
+                        if st.button(btn_label, key=f"btn_{f['fixture']['id']}", use_container_width=True):
+                             st.session_state['current_match_obj'] = f
+                             # Clear previous analysis if switching match
+                             if 'analysis_results' in st.session_state:
+                                 del st.session_state['analysis_results']
+                             st.rerun()
 
 # Main content
 st.title("⚽ AI Committee Football Analyzer Pro")
@@ -213,15 +224,40 @@ with tab1:
             league_id = match['league']['id']
             season = match['league']['season']
             
-            with st.spinner("🕵️ Az ügynökök dolgoznak... (Ez eltarthat 10-20 másodpercig)"):
+            with st.status("🕵️ A Bizottság ülésezik...", expanded=True) as status:
                 # 1. Gather detailed data
+                st.write("📊 Adatok gyűjtése a mérkőzésről...")
                 match_details = data_manager.get_match_details(fixture_id, home_id, away_id, league_id, season)
                 
                 # 2. Get learned lessons
+                st.write("🧠 Korábbi tapasztalatok betöltése...")
                 lessons = db_manager.get_lessons()
                 
-                # 3. Run AI Committee
-                results = ai_committee.analyze_match(match_details, home_name, away_name, lessons)
+                # 3. Run AI Committee Steps Manually for Progress
+                # Statistician
+                st.write("📈 A Statisztikus számolja az esélyeket...")
+                stat_report = ai_committee.run_statistician(match_details)
+                
+                # Scout
+                st.write("🔍 A Hírszerző elemzi a hiányzókat...")
+                scout_report = ai_committee.run_scout(home_name, away_name)
+                
+                # Tactician
+                st.write("♟️ A Taktikus vizsgálja a stílusokat...")
+                tactician_report = ai_committee.run_tactician(match_details)
+                
+                # Boss
+                st.write("👔 A Főnök meghozza a végső döntést...")
+                boss_report = ai_committee.run_boss(stat_report, scout_report, tactician_report, match_details, lessons)
+                
+                results = {
+                    "statistician": stat_report,
+                    "scout": scout_report,
+                    "tactician": tactician_report,
+                    "boss": boss_report
+                }
+                
+                status.update(label="Elemzés elkészült! 🚀", state="complete", expanded=False)
                 
                 st.session_state['analysis_results'] = results
                 st.session_state['selected_match_data'] = match
@@ -231,7 +267,36 @@ with tab1:
             results = st.session_state['analysis_results']
             
             st.markdown("---")
-            st.subheader("📝 A Bizottság Jelentése")
+            
+            # Extract Tips using Regex
+            boss_text = results['boss']
+            score_match = re.search(r'\*\*PONTOS VÉGEREDMÉNY TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
+            value_match = re.search(r'\*\*VALUE TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
+            
+            score_tip = score_match.group(1).strip() if score_match else "Nincs adat"
+            value_tip = value_match.group(1).strip() if value_match else "Nincs adat"
+            
+            # Display Big Metrics
+            st.markdown("<h2 style='text-align: center;'>🏆 A Bizottság Döntése</h2>", unsafe_allow_html=True)
+            
+            m_col1, m_col2 = st.columns(2)
+            with m_col1:
+                st.markdown(f"""
+                <div style="background: rgba(0, 210, 255, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 210, 255, 0.3); text-align: center;">
+                    <h3 style="margin:0; color: #00d2ff;">PONTOS EREDMÉNY</h3>
+                    <h1 style="margin:10px 0; font-size: 3rem;">{score_tip}</h1>
+                </div>
+                """, unsafe_allow_html=True)
+            with m_col2:
+                st.markdown(f"""
+                <div style="background: rgba(255, 0, 100, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(255, 0, 100, 0.3); text-align: center;">
+                    <h3 style="margin:0; color: #ff0064;">VALUE TIPP</h3>
+                    <h2 style="margin:15px 0; font-size: 1.8rem;">{value_tip}</h2>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            st.subheader("📝 Részletes Jelentések")
             
             col1, col2 = st.columns(2)
             with col1:
