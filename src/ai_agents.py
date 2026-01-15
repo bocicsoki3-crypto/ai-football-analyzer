@@ -29,7 +29,7 @@ class AICommittee:
         6. Over/Under 2.5 Gól valószínűsége %.
 
         KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
-        {
+        {{
             "home_win_percent": "XX%",
             "draw_percent": "XX%",
             "away_win_percent": "XX%",
@@ -38,7 +38,7 @@ class AICommittee:
             "btts_percent": "XX%",
             "over_2_5_percent": "XX%",
             "analysis": "Rövid szöveges magyarázat (max 2 mondat)..."
-        }
+        }}
         
         Csak a JSON objektumot add vissza!
         """
