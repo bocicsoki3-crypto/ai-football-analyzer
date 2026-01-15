@@ -132,7 +132,7 @@ if not check_password():
 
 # Initialize modules
 @st.cache_resource
-def get_managers(version=2):
+def get_managers(version=3):
     return DataManager(), AICommittee(), DBManager()
 
 data_manager, ai_committee, db_manager = get_managers()

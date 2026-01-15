@@ -36,7 +36,7 @@ class AICommittee:
         except Exception as e:
             return f"Hiba a Statisztikusnál: {str(e)}"
 
-    def run_scout(self, home_team, away_team):
+    def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None):
         self._setup_clients()
         if not self.groq_client:
             return "Groq API Key hiányzik."
@@ -134,12 +134,10 @@ class AICommittee:
             return f"Hiba a Főnöknél: {str(e)}"
 
     def run_prophet(self, match_data, home_team, away_team):
-        self._setup_clients()
-        if not self.groq_client:
-            return "Groq API Key hiányzik."
-            
+        # Use Ollama (qwen2.5:7b) - Already defined above in previous search_replace, 
+        # but this block is to replace the OLD run_prophet method in the file
         prompt = f"""
-        TE VAGY A PRÓFÉTA (Groq - Llama 3.3 70B).
+        TE VAGY A PRÓFÉTA (AI Agent).
         
         Meccs: {home_team} vs {away_team}
         Adatok: {json.dumps(match_data)}
@@ -161,12 +159,10 @@ class AICommittee:
         """
         
         try:
-            completion = self.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4
-            )
-            content = completion.choices[0].message.content
+            response = ollama.chat(model='qwen2.5:7b', messages=[
+                {'role': 'user', 'content': prompt},
+            ])
+            content = response['message']['content']
             # Extract JSON if wrapped in code blocks
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
@@ -174,7 +170,7 @@ class AICommittee:
                 content = content.split("```")[1]
             return content.strip()
         except Exception as e:
-            return f"Hiba a Prófétánál: {str(e)}"
+             return f"Hiba a Prófétánál (Ollama): {str(e)}"
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
         # 1. Step: Statistician
