@@ -348,16 +348,44 @@ with tab1:
                 stat_content = results['statistician']
                 # If it's a string wrapping JSON, try to clean it
                 if isinstance(stat_content, str):
+                    # Replace single quotes with double quotes (sometimes models mess this up)
+                    if "'" in stat_content and '"' not in stat_content:
+                        stat_content = stat_content.replace("'", '"')
+                    
                     if "{" in stat_content and "}" in stat_content:
                         # Find the first { and last }
                         start = stat_content.find("{")
                         end = stat_content.rfind("}") + 1
-                        stat_json = json.loads(stat_content[start:end])
+                        json_str = stat_content[start:end]
+                        # Remove newlines and extra spaces
+                        json_str = json_str.replace("\n", "").replace("\r", "")
+                        stat_json = json.loads(json_str)
                 else:
                     stat_json = stat_content
             except Exception as e:
-                pass # Fail silently, show N/A
+                # Fallback extraction with regex if JSON fails
+                try:
+                    stat_json['expected_corners'] = re.search(r'"expected_corners":\s*"([^"]+)"', stat_content).group(1)
+                    stat_json['expected_cards'] = re.search(r'"expected_cards":\s*"([^"]+)"', stat_content).group(1)
+                    stat_json['btts_percent'] = re.search(r'"btts_percent":\s*"([^"]+)"', stat_content).group(1)
+                    stat_json['over_2_5_percent'] = re.search(r'"over_2_5_percent":\s*"([^"]+)"', stat_content).group(1)
+                except:
+                    pass
             
+            # Clean up Boss output (Remove explanations)
+            if score_tip and len(score_tip) > 20:
+                # Try to extract just the score (e.g., 2-1)
+                short_score = re.search(r'(\d+-\d+)', score_tip)
+                if short_score:
+                    score_tip = short_score.group(1)
+            
+            if value_tip and "MIVEL" in value_tip.upper():
+                value_tip = value_tip.split("MIVEL")[0].strip()
+                if value_tip.endswith(","):
+                    value_tip = value_tip[:-1]
+            if value_tip and "BECAUSE" in value_tip.upper():
+                 value_tip = value_tip.split("BECAUSE")[0].strip()
+
             k_col1, k_col2, k_col3, k_col4 = st.columns(4)
             
             with k_col1:

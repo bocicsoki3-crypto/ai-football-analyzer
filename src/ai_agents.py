@@ -157,9 +157,9 @@ class AICommittee:
         
         **RÖVID ELEMZÉS**: [2-3 mondat összefoglaló, indoklással]
         
-        **PONTOS VÉGEREDMÉNY TIPP**: [pl. 2-1]
+        **PONTOS VÉGEREDMÉNY TIPP**: [CSAK A SZÁM! pl. 2-1. SEMMI MÁS SZÖVEG!]
         
-        **VALUE TIPP**: [Tipp leírása] (Odds becslés: 1.70+)
+        **VALUE TIPP**: [CSAK A TIPP TÖMÖREN! pl. Hazai győzelem vagy BTTS. SEMMI MAGYARÁZAT!]
         """
         
         try:
