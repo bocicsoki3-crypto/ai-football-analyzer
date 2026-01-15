@@ -181,12 +181,17 @@ with st.sidebar:
                     
                     for f in league_fixtures:
                         try:
-                            match_time = pd.to_datetime(f['fixture']['date']).strftime('%H:%M')
+                            # Convert to CET (Europe/Budapest)
+                            match_dt = pd.to_datetime(f['fixture']['date'])
+                            if match_dt.tzinfo is None:
+                                match_dt = match_dt.tz_localize('UTC')
+                            match_dt_cet = match_dt.tz_convert('Europe/Budapest')
+                            match_time_str = match_dt_cet.strftime('%Y.%m.%d. %H:%M')
                         except:
-                            match_time = "??"
+                            match_time_str = "??"
                         
                         # Button for each match
-                        btn_label = f"⏰ {match_time} | {f['teams']['home']['name']} vs {f['teams']['away']['name']}"
+                        btn_label = f"⏰ {match_time_str} | {f['teams']['home']['name']} vs {f['teams']['away']['name']}"
                         if st.button(btn_label, key=f"btn_{f['fixture']['id']}", use_container_width=True):
                              st.session_state['current_match_obj'] = f
                              # Clear previous analysis if switching match
@@ -246,6 +251,10 @@ with tab1:
                 st.write("♟️ A Taktikus vizsgálja a stílusokat...")
                 tactician_report = ai_committee.run_tactician(match_details)
                 
+                # Prophet
+                st.write("🔮 A Próféta megírja a forgatókönyvet...")
+                prophet_report = ai_committee.run_prophet(match_details, home_name, away_name)
+                
                 # Boss
                 st.write("👔 A Főnök meghozza a végső döntést...")
                 boss_report = ai_committee.run_boss(stat_report, scout_report, tactician_report, match_details, lessons)
@@ -254,6 +263,7 @@ with tab1:
                     "statistician": stat_report,
                     "scout": scout_report,
                     "tactician": tactician_report,
+                    "prophet": prophet_report,
                     "boss": boss_report
                 }
                 

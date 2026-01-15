@@ -131,6 +131,49 @@ class AICommittee:
         except Exception as e:
             return f"Hiba a Főnöknél: {str(e)}"
 
+    def run_prophet(self, match_data, home_team, away_team):
+        self._setup_clients()
+        if not self.groq_client:
+            return "Groq API Key hiányzik."
+            
+        prompt = f"""
+        TE VAGY A PRÓFÉTA (Groq - Llama 3.3 70B).
+        
+        Meccs: {home_team} vs {away_team}
+        Adatok: {json.dumps(match_data)}
+        
+        FELADAT:
+        Készíts egy "Mérkőzés Forgatókönyvet" (Match Scenario).
+        Oszd fel a mérkőzést 15 perces szakaszokra.
+        Jósolj meg eseményeket (gól, lap, dominancia) minden szakaszra.
+        
+        KIMENETI FORMÁTUM (JSON ARRAY):
+        [
+            {{"period": "0-15'", "event": "...", "score_after": "0-0"}},
+            {{"period": "16-30'", "event": "...", "score_after": "..."}},
+            ...
+            {{"period": "76-90'", "event": "...", "score_after": "..."}}
+        ]
+        
+        Csak a JSON tömböt add vissza, semmi mást!
+        """
+        
+        try:
+            completion = self.groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.4
+            )
+            content = completion.choices[0].message.content
+            # Extract JSON if wrapped in code blocks
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1]
+            return content.strip()
+        except Exception as e:
+            return f"Hiba a Prófétánál: {str(e)}"
+
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
         # 1. Step: Statistician
         stat_report = self.run_statistician(match_data)
@@ -141,12 +184,16 @@ class AICommittee:
         # 3. Step: Tactician
         tactician_report = self.run_tactician(match_data)
         
-        # 4. Step: The Boss
+        # 4. Step: The Prophet (Timeline)
+        prophet_report = self.run_prophet(match_data, home_team_name, away_team_name)
+        
+        # 5. Step: The Boss
         final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons)
         
         return {
             "statistician": stat_report,
             "scout": scout_report,
             "tactician": tactician_report,
+            "prophet": prophet_report,
             "boss": final_verdict
         }
