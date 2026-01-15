@@ -23,22 +23,22 @@ class AICommittee:
         Számolj és becsülj Poisson-eloszlás és a megadott adatok alapján:
         1. Várható Gólok (xG) mindkét csapatra.
         2. Győzelmi esélyek (Hazai / Döntetlen / Vendég) százalékban.
-        3. Várható Szögletek száma (Corners) - adj meg egy tartományt vagy átlagot.
-        4. Várható Sárga/Piros lapok száma (Cards) - adj meg egy tartományt vagy átlagot.
+        3. Várható Szögletek (Corners): Adj meg egy KONKRÉT fogadási határt a legvalószínűbb kimenetelre (pl. "Over 8.5" vagy "Over 9.5" vagy "Under 10.5"). NE adj meg tartományt!
+        4. Várható Lapok (Cards): Adj meg egy KONKRÉT fogadási határt a legvalószínűbb kimenetelre (pl. "Over 3.5" vagy "Over 4.5"). NE adj meg tartományt!
         5. BTTS (Both Teams To Score) valószínűsége %.
         6. Over/Under 2.5 Gól valószínűsége %.
 
         KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
-        {{
+        {
             "home_win_percent": "XX%",
             "draw_percent": "XX%",
             "away_win_percent": "XX%",
-            "expected_corners": "X-Y",
-            "expected_cards": "X-Y",
+            "expected_corners": "Over/Under X.5",
+            "expected_cards": "Over/Under X.5",
             "btts_percent": "XX%",
             "over_2_5_percent": "XX%",
             "analysis": "Rövid szöveges magyarázat (max 2 mondat)..."
-        }}
+        }
         
         Csak a JSON objektumot add vissza!
         """

@@ -426,7 +426,13 @@ with tab1:
             col1, col2 = st.columns(2)
             with col1:
                 with st.expander("📊 STATISZTIKUS JELENTÉSE (Groq)", expanded=True):
-                    st.write(results['statistician'])
+                    # Check if we have parsed analysis, otherwise show raw
+                    if stat_json and 'analysis' in stat_json:
+                         st.info(stat_json['analysis'])
+                         with st.expander("Részletes JSON adatok (Debug)"):
+                             st.code(results['statistician'], language='json')
+                    else:
+                        st.write(results['statistician'])
                 with st.expander("🕵️ HÍRSZERZŐ JELENTÉSE (Groq)", expanded=True):
                     st.write(results['scout'])
             with col2:
