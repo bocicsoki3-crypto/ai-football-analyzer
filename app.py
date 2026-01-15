@@ -25,24 +25,24 @@ st.markdown("""
     <style>
     /* Main Background */
     .stApp {
-        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+        background: linear-gradient(180deg, #000000 0%, #1a1a1a 100%);
         color: #e0e0e0;
     }
     
     /* Sidebar */
     [data-testid="stSidebar"] {
-        background-color: rgba(0, 0, 0, 0.3);
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        background-color: #000000;
+        border-right: 1px solid rgba(255, 215, 0, 0.1);
     }
     
     /* Glassmorphism Cards/Expanders */
     div[data-testid="stExpander"] {
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(20, 20, 20, 0.8);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        border: 1px solid rgba(255, 215, 0, 0.2);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         margin-bottom: 15px;
         overflow: hidden;
     }
@@ -50,41 +50,46 @@ st.markdown("""
     /* Headers inside Expanders */
     .streamlit-expanderHeader {
         background-color: transparent !important;
-        color: #ffffff !important;
+        color: #FFD700 !important; /* Gold */
         font-weight: 600;
+        text-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
     }
     
     /* Buttons */
     .stButton>button {
-        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
-        color: white;
+        background: linear-gradient(90deg, #B8860B 0%, #FFD700 100%);
+        color: #000000;
         border: none;
         border-radius: 12px;
         padding: 12px 24px;
-        font-weight: 600;
+        font-weight: 800;
         letter-spacing: 0.5px;
         transition: all 0.3s ease;
         text-transform: uppercase;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
     }
     
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 210, 255, 0.4);
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        color: #000000;
     }
     
     /* Inputs & Selectboxes */
     .stTextInput>div>div>input, .stSelectbox>div>div>div {
-        background-color: rgba(255, 255, 255, 0.1);
-        color: white;
+        background-color: rgba(30, 30, 30, 0.8);
+        color: #FFD700;
         border-radius: 10px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 215, 0, 0.2);
     }
     
-    /* Typography */
+    /* Typography - Golden Glow */
     h1, h2, h3 {
-        color: #ffffff;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        color: #FFD700 !important;
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 165, 0, 0.3);
+        font-family: 'Arial', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
     
     /* Custom Match Button in Sidebar */
@@ -92,6 +97,27 @@ st.markdown("""
         width: 100%;
         text-align: left;
         margin: 5px 0;
+    }
+    
+    /* Metric Cards */
+    .metric-card {
+        background: rgba(0, 0, 0, 0.6);
+        border: 1px solid #FFD700;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #FFD700;
+        text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    }
+    .metric-label {
+        color: #aaa;
+        font-size: 0.9rem;
+        text-transform: uppercase;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -132,7 +158,7 @@ if not check_password():
 
 # Initialize modules
 @st.cache_resource
-def get_managers(version=3):
+def get_managers(version=4):
     return DataManager(), AICommittee(), DBManager()
 
 data_manager, ai_committee, db_manager = get_managers()
@@ -312,6 +338,60 @@ with tab1:
                 </div>
                 """, unsafe_allow_html=True)
             
+            # --- NEW METRICS SECTION ---
+            st.markdown("---")
+            st.markdown("<h3 style='text-align: center; color: #FFD700;'>⚡ KULCS MUTATÓK (STATISZTIKUS)</h3>", unsafe_allow_html=True)
+            
+            # Parse Statistician JSON
+            stat_json = {}
+            try:
+                stat_content = results['statistician']
+                # If it's a string wrapping JSON, try to clean it
+                if isinstance(stat_content, str):
+                    if "{" in stat_content and "}" in stat_content:
+                        # Find the first { and last }
+                        start = stat_content.find("{")
+                        end = stat_content.rfind("}") + 1
+                        stat_json = json.loads(stat_content[start:end])
+                else:
+                    stat_json = stat_content
+            except Exception as e:
+                pass # Fail silently, show N/A
+            
+            k_col1, k_col2, k_col3, k_col4 = st.columns(4)
+            
+            with k_col1:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">🚩 SZÖGLETEK</div>
+                    <div class="metric-value">{stat_json.get('expected_corners', 'N/A')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with k_col2:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">🟨 LAPOK</div>
+                    <div class="metric-value">{stat_json.get('expected_cards', 'N/A')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with k_col3:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">⚽ BTTS %</div>
+                    <div class="metric-value">{stat_json.get('btts_percent', 'N/A')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with k_col4:
+                st.markdown(f"""
+                <div class="metric-card">
+                    <div class="metric-label">📈 OVER 2.5 %</div>
+                    <div class="metric-value">{stat_json.get('over_2_5_percent', 'N/A')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
             st.markdown("---")
             st.subheader("📝 Részletes Jelentések")
             

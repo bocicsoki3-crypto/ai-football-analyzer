@@ -1,6 +1,7 @@
 import os
 from groq import Groq
 import json
+import ollama
 
 class AICommittee:
     def __init__(self):
@@ -12,29 +13,50 @@ class AICommittee:
             self.groq_client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
     def run_statistician(self, match_data):
-        self._setup_clients()
-        if not self.groq_client:
-            return "Groq API Key hiányzik."
-            
+        # Use Ollama (qwen2.5:7b)
         prompt = f"""
-        TE VAGY A STATISZTIKUS (Groq - Llama 3.3 70B).
+        TE VAGY A STATISZTIKUS (AI Agent).
         
         Adatok: {json.dumps(match_data)}
         
         FELADAT:
-        Számolj Poisson-eloszlást a gólok alapján. Határozd meg a százalékos esélyeket (H/D/V).
-        Csak a számításokat és a statisztikai valószínűségeket add meg.
+        Számolj és becsülj Poisson-eloszlás és a megadott adatok alapján:
+        1. Várható Gólok (xG) mindkét csapatra.
+        2. Győzelmi esélyek (Hazai / Döntetlen / Vendég) százalékban.
+        3. Várható Szögletek száma (Corners) - adj meg egy tartományt vagy átlagot.
+        4. Várható Sárga/Piros lapok száma (Cards) - adj meg egy tartományt vagy átlagot.
+        5. BTTS (Both Teams To Score) valószínűsége %.
+        6. Over/Under 2.5 Gól valószínűsége %.
+
+        KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
+        {{
+            "home_win_percent": "XX%",
+            "draw_percent": "XX%",
+            "away_win_percent": "XX%",
+            "expected_corners": "X-Y",
+            "expected_cards": "X-Y",
+            "btts_percent": "XX%",
+            "over_2_5_percent": "XX%",
+            "analysis": "Rövid szöveges magyarázat (max 2 mondat)..."
+        }}
+        
+        Csak a JSON objektumot add vissza!
         """
         
         try:
-            completion = self.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.1
-            )
-            return completion.choices[0].message.content
+            response = ollama.chat(model='qwen2.5:7b', messages=[
+                {'role': 'user', 'content': prompt},
+            ])
+            content = response['message']['content']
+            # Clean up potential markdown code blocks
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0]
+            elif "```" in content:
+                content = content.split("```")[1]
+            return content.strip()
         except Exception as e:
-            return f"Hiba a Statisztikusnál: {str(e)}"
+            # Fallback to Groq if Ollama fails
+            return f'{{"error": "Hiba a Statisztikusnál (Ollama): {str(e)}"}}'
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None):
         self._setup_clients()
@@ -177,7 +199,9 @@ class AICommittee:
         stat_report = self.run_statistician(match_data)
         
         # 2. Step: Scout
-        scout_report = self.run_scout(home_team_name, away_team_name)
+        injuries = match_data.get('injuries', [])
+        h2h = match_data.get('h2h', [])
+        scout_report = self.run_scout(home_team_name, away_team_name, injuries, h2h)
         
         # 3. Step: Tactician
         tactician_report = self.run_tactician(match_data)
