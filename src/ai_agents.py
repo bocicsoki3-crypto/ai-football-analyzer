@@ -56,6 +56,23 @@ class AICommittee:
             return content.strip()
         except Exception as e:
             # Fallback to Groq if Ollama fails
+            self._setup_clients()
+            if self.groq_client:
+                try:
+                    completion = self.groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.1
+                    )
+                    content = completion.choices[0].message.content
+                    # Clean up potential markdown code blocks
+                    if "```json" in content:
+                        content = content.split("```json")[1].split("```")[0]
+                    elif "```" in content:
+                        content = content.split("```")[1]
+                    return content.strip()
+                except Exception as groq_e:
+                    return f'{{"error": "Hiba a Statisztikusnál (Ollama & Groq): {str(e)} | {str(groq_e)}"}}'
             return f'{{"error": "Hiba a Statisztikusnál (Ollama): {str(e)}"}}'
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None):
@@ -192,7 +209,23 @@ class AICommittee:
                 content = content.split("```")[1]
             return content.strip()
         except Exception as e:
-             return f"Hiba a Prófétánál (Ollama): {str(e)}"
+            self._setup_clients()
+            if self.groq_client:
+                try:
+                    completion = self.groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.2
+                    )
+                    content = completion.choices[0].message.content
+                    if "```json" in content:
+                        content = content.split("```json")[1].split("```")[0]
+                    elif "```" in content:
+                        content = content.split("```")[1]
+                    return content.strip()
+                except Exception as groq_e:
+                    return f"Hiba a Prófétánál (Ollama & Groq): {str(e)} | {str(groq_e)}"
+            return f"Hiba a Prófétánál (Ollama): {str(e)}"
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
         # 1. Step: Statistician

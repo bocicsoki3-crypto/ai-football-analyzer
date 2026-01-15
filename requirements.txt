@@ -4,3 +4,4 @@ pandas
 google-generativeai
 groq
 python-dotenv
+ollama
