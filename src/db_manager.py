@@ -60,6 +60,13 @@ class DBManager:
         conn.commit()
         conn.close()
 
+    def delete_prediction(self, prediction_id):
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        c.execute('DELETE FROM predictions WHERE id = ?', (prediction_id,))
+        conn.commit()
+        conn.close()
+
     def get_lessons(self):
         # Retrieve lessons from incorrect predictions to feed back to the Boss
         conn = sqlite3.connect(self.db_path)

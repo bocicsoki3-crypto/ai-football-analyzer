@@ -453,13 +453,23 @@ with tab2:
             st.write(f"Meccs: {row['home_team']} vs {row['away_team']}")
             st.write(f"Tipp: {row['predicted_result']}")
             
-            new_result = st.text_input("Tényleges végeredmény:", value=row['actual_result'] if row['actual_result'] else "")
-            is_correct = st.checkbox("Helyes volt a tipp?", value=bool(row['is_correct']))
-            lesson = st.text_area("Tanulság (ha tévedett a rendszer):", value=row['lesson_learned'] if row['lesson_learned'] else "")
+            col1, col2 = st.columns(2)
+            with col1:
+                new_result = st.text_input("Tényleges végeredmény:", value=row['actual_result'] if row['actual_result'] else "")
+                is_correct = st.checkbox("Helyes volt a tipp?", value=bool(row['is_correct']))
+                lesson = st.text_area("Tanulság (ha tévedett a rendszer):", value=row['lesson_learned'] if row['lesson_learned'] else "")
+                
+                if st.button("💾 Frissítés és Tanulás", type="primary"):
+                    db_manager.update_result(pred_id, new_result, is_correct, lesson)
+                    st.success("Adatbázis frissítve! A rendszer tanulni fog ebből.")
+                    st.rerun()
             
-            if st.button("Frissítés és Tanulás"):
-                db_manager.update_result(pred_id, new_result, is_correct, lesson)
-                st.success("Adatbázis frissítve! A rendszer tanulni fog ebből.")
-                st.rerun()
+            with col2:
+                st.write("---")
+                st.warning("⚠️ Veszélyes Zóna")
+                if st.button("🗑️ Tipp Törlése Véglegesen", type="secondary"):
+                    db_manager.delete_prediction(pred_id)
+                    st.success("Tipp sikeresen törölve!")
+                    st.rerun()
     else:
         st.info("Még nincs mentett elemzés.")
