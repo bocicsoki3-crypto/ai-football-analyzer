@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches
+.streamlit/
+.sass-cache/
+.pytest_cache/
+.mypy_cache/
+.pytype/
+
+# Environment variables (VÉDD A KULCSAIDAT!)
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
