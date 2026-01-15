@@ -102,8 +102,27 @@ with tab1:
 
         if 'fixtures' in st.session_state:
             fixtures = st.session_state['fixtures']
-            match_options = {f"{f['teams']['home']['name']} vs {f['teams']['away']['name']} ({f['league']['name']})": f for f in fixtures}
-            selected_match_name = st.selectbox("Válassz mérkőzést:", list(match_options.keys()))
+            
+            # Ligák kinyerése és rendezése
+            leagues = sorted(list(set([f['league']['name'] for f in fixtures])))
+            selected_league = st.selectbox("1. Válassz bajnokságot:", leagues)
+            
+            # Meccsek szűrése a kiválasztott ligára
+            league_fixtures = [f for f in fixtures if f['league']['name'] == selected_league]
+            
+            # Meccs opciók összeállítása időponttal
+            match_options = {}
+            for f in league_fixtures:
+                try:
+                    # Időpont konvertálása és formázása (HH:MM)
+                    match_time = pd.to_datetime(f['fixture']['date']).strftime('%H:%M')
+                except:
+                    match_time = "??:??"
+                
+                match_label = f"⏰ {match_time} | {f['teams']['home']['name']} vs {f['teams']['away']['name']}"
+                match_options[match_label] = f
+                
+            selected_match_name = st.selectbox("2. Válassz mérkőzést:", list(match_options.keys()))
             
             if st.button("ELEMZÉS INDÍTÁSA"):
                 selected_match = match_options[selected_match_name]
@@ -125,6 +144,7 @@ with tab1:
                     
                     st.session_state['analysis_results'] = results
                     st.session_state['current_match'] = selected_match_name
+                    st.session_state['selected_match_data'] = selected_match # Store full match data for saving
 
             if 'analysis_results' in st.session_state:
                 results = st.session_state['analysis_results']
@@ -143,9 +163,18 @@ with tab1:
                 
                 # Save to DB automatically if not already saved (simple check could be added, but for now we just save)
                 if st.button("Eredmény mentése az Archívumba"):
+                    # Use stored match data if available, otherwise fallback (safer)
+                    if 'selected_match_data' in st.session_state:
+                         home_team = st.session_state['selected_match_data']['teams']['home']['name']
+                         away_team = st.session_state['selected_match_data']['teams']['away']['name']
+                    else:
+                         # Fallback parsing if state was lost (less reliable with new format)
+                         home_team = "Ismeretlen Hazai" 
+                         away_team = "Ismeretlen Vendég"
+
                     db_manager.save_prediction(
-                        selected_match_name.split(" vs ")[0], 
-                        selected_match_name.split(" vs ")[1].split(" (")[0], 
+                        home_team, 
+                        away_team, 
                         results, 
                         results['boss']
                     )
