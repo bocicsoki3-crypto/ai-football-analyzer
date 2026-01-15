@@ -231,8 +231,12 @@ with tab1:
             
             with st.status("🕵️ A Bizottság ülésezik...", expanded=True) as status:
                 # 1. Gather detailed data
-                st.write("📊 Adatok gyűjtése a mérkőzésről...")
+                st.write("📊 Adatok gyűjtése a mérkőzésről (Sérültek, H2H, Statisztikák)...")
                 match_details = data_manager.get_match_details(fixture_id, home_id, away_id, league_id, season)
+                
+                # Extract referee and venue if available
+                referee = match['fixture'].get('referee', 'Ismeretlen')
+                venue = match['fixture'].get('venue', {}).get('name', 'Ismeretlen')
                 
                 # 2. Get learned lessons
                 st.write("🧠 Korábbi tapasztalatok betöltése...")
@@ -240,12 +244,15 @@ with tab1:
                 
                 # 3. Run AI Committee Steps Manually for Progress
                 # Statistician
-                st.write("📈 A Statisztikus számolja az esélyeket...")
+                st.write("📈 A Statisztikus számolja az esélyeket (xG, Forma)...")
                 stat_report = ai_committee.run_statistician(match_details)
                 
                 # Scout
-                st.write("🔍 A Hírszerző elemzi a hiányzókat...")
-                scout_report = ai_committee.run_scout(home_name, away_name)
+                st.write("🔍 A Hírszerző elemzi a hiányzókat és a bírót...")
+                # We extract injuries and h2h inside analyze_match now, but we pass referee/venue
+                injuries = match_details.get('injuries', [])
+                h2h = match_details.get('h2h', [])
+                scout_report = ai_committee.run_scout(home_name, away_name, injuries, h2h, referee, venue)
                 
                 # Tactician
                 st.write("♟️ A Taktikus vizsgálja a stílusokat...")

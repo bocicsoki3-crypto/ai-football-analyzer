@@ -105,16 +105,18 @@ class AICommittee:
         
         BEMENETEK:
         1. STATISZTIKUS JELENTÉSE: {statistician_report}
-        2. HÍRSZERZŐ JELENTÉSE: {scout_report}
+        2. HÍRSZERZŐ JELENTÉSE (Sérültek, H2H, Bíró): {scout_report}
         3. TAKTIKUS JELENTÉSE: {tactician_report}
         4. MECCS ADATOK: {json.dumps(match_data)}
         
         FELADAT:
-        Vesd össze az adatokat. Ha a statisztika hazait mond, de a hírszerző szerint a védelem kulcsemberei hiányoznak, korrigáld a tippet lefelé!
+        Vesd össze az adatokat. Keresd a piaci rést (Value Betting)!
+        Ha a statisztika hazait mond, de a hírszerző szerint sok a sérült, korrigálj!
+        Figyelj az xG (Várható gólok) és a forma tendenciákra az adatokból.
         
         KIMENETI FORMÁTUM (Szigorúan ezt kövesd):
         
-        **RÖVID ELEMZÉS**: [2-3 mondat összefoglaló]
+        **RÖVID ELEMZÉS**: [2-3 mondat összefoglaló, indoklással]
         
         **PONTOS VÉGEREDMÉNY TIPP**: [pl. 2-1]
         

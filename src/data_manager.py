@@ -35,20 +35,58 @@ class DataManager:
         # 1. Standings
         standings = self._get_standings(league_id, season)
         
-        # 2. Last 5 matches (Form) - usually available in standings or separate fixtures call
-        # We will extract form from standings if available, or fetch last fixtures
-        
-        # 3. Goal Stats
+        # 2. Team Stats (Goals, Cards, Formations)
         home_stats = self._get_team_stats(home_team_id, league_id, season)
         away_stats = self._get_team_stats(away_team_id, league_id, season)
+        
+        # 3. Injuries
+        injuries = self._get_injuries(fixture_id)
+        
+        # 4. Head-to-Head
+        h2h = self._get_h2h(home_team_id, away_team_id)
         
         return {
             "fixture_id": fixture_id,
             "league_id": league_id,
             "home_team": home_stats,
             "away_team": away_stats,
-            "standings": standings
+            "standings": standings,
+            "injuries": injuries,
+            "h2h": h2h
         }
+
+    def _get_injuries(self, fixture_id):
+        url = f"{self.base_url}/injuries"
+        querystring = {"fixture": fixture_id}
+        try:
+            response = requests.get(url, headers=self._get_headers(), params=querystring)
+            data = response.json()
+            if data.get("response"):
+                # Simplify injury data
+                return [f"{i['player']['name']} ({i['team']['name']}) - {i['player']['type']} ({i['player']['reason']})" for i in data["response"]]
+            return []
+        except:
+            return []
+
+    def _get_h2h(self, home_id, away_id):
+        url = f"{self.base_url}/fixtures/headtohead"
+        querystring = {"h2h": f"{home_id}-{away_id}", "last": 5}
+        try:
+            response = requests.get(url, headers=self._get_headers(), params=querystring)
+            data = response.json()
+            if data.get("response"):
+                # Simplify H2H data
+                results = []
+                for f in data["response"]:
+                    date = f['fixture']['date'][:10]
+                    home = f['teams']['home']['name']
+                    away = f['teams']['away']['name']
+                    score = f"{f['goals']['home']}-{f['goals']['away']}"
+                    results.append(f"{date}: {home} vs {away} ({score})")
+                return results
+            return []
+        except:
+            return []
 
     def _get_standings(self, league_id, season):
         url = f"{self.base_url}/standings"
