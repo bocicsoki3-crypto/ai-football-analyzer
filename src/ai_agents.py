@@ -28,8 +28,8 @@ class AICommittee:
         Számolj és becsülj Poisson-eloszlás és a megadott adatok alapján:
         1. Várható Gólok (xG) mindkét csapatra.
         2. Győzelmi esélyek (Hazai / Döntetlen / Vendég) százalékban.
-        3. Várható Szögletek (Corners): Adj meg egy KONKRÉT fogadási határt a legvalószínűbb kimenetelre (pl. "Over 8.5" vagy "Over 9.5" vagy "Under 10.5"). NE adj meg tartományt!
-        4. Várható Lapok (Cards): Adj meg egy KONKRÉT fogadási határt a legvalószínűbb kimenetelre (pl. "Over 3.5" vagy "Over 4.5"). NE adj meg tartományt!
+        3. Várható Szögletek (Corners): SZÁMOLD KI a csapatok átlagaiból! Ha nincs adat, írd: "Nincs adat". Ha van, adj meg egy KONKRÉT fogadási határt (pl. "Over 9.5" ha az átlag 10.2).
+        4. Várható Lapok (Cards): SZÁMOLD KI a csapatok átlagaiból! Ha nincs adat, írd: "Nincs adat". Ha van, adj meg egy KONKRÉT fogadási határt (pl. "Over 3.5" ha az átlag 4.1).
         5. BTTS (Both Teams To Score) valószínűsége %.
         6. Over/Under 2.5 Gól valószínűsége %.
 
@@ -38,11 +38,11 @@ class AICommittee:
             "home_win_percent": "XX%",
             "draw_percent": "XX%",
             "away_win_percent": "XX%",
-            "expected_corners": "Over/Under X.5",
-            "expected_cards": "Over/Under X.5",
+            "expected_corners": "Over/Under X.5 (vagy Nincs adat)",
+            "expected_cards": "Over/Under X.5 (vagy Nincs adat)",
             "btts_percent": "XX%",
             "over_2_5_percent": "XX%",
-            "analysis": "Rövid szöveges magyarázat (max 2 mondat)..."
+            "analysis": "Írd le pontosan, miből számoltál! Pl: 'Hazai átlag 6.2 szöglet, Vendég 4.1, összesen 10.3 -> Over 9.5'."
         }}
         
         Csak a JSON objektumot add vissza!
