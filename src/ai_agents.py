@@ -38,6 +38,8 @@ class AICommittee:
         KÖTELEZŐ SZÁMÍTÁSOK (Valós adatokból):
         - Szögletek: (Hazai otthoni átlag + Vendég idegenbeli átlag) korrigálva a csapatok stílusával.
         - Lapok: (Hazai lap átlag + Vendég lap átlag + Bíró szigora ha van).
+        - BTTS (Mindkét csapat lő gólt): Konkrét képlet alapján! (Hazai otthoni gólszerzési % + Vendég idegenbeli gólszerzési %) / 2. NE HASALJ (pl. 58% helyett 58.4%)!
+        - Over 2.5: A várható gólok (xG) összegéből számolj Poisson eloszlással pontos %-ot!
 
         KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
         {{
@@ -46,8 +48,8 @@ class AICommittee:
             "away_win_percent": "XX%",
             "expected_corners": "Over/Under X.5 (pl. 'Over 9.5' - Indoklás: Hazai 6.5 + Vendég 4.0)",
             "expected_cards": "Over/Under X.5 (pl. 'Over 4.5' - Indoklás: Parázs meccs várható)",
-            "btts_percent": "XX%",
-            "over_2_5_percent": "XX%",
+            "btts_percent": "XX.X%",
+            "over_2_5_percent": "XX.X%",
             "analysis": "Tömör, profi elemzés konkrét számokkal. Pl: 'A Hazai csapat otthon veretlen, xG: 2.1. A Vendég védelme idegenben lyukas (2.1 kapott gól/meccs). Kulcsjátékos hiánya miatt a hazai győzelem esélye 10%-kal csökken.'"
         }}
         

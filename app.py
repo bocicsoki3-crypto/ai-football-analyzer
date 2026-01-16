@@ -407,19 +407,32 @@ with tab1:
             # Display Big Metrics
             st.markdown("<h2 style='text-align: center;'>🏆 A Bizottság Döntése</h2>", unsafe_allow_html=True)
             
-            m_col1, m_col2 = st.columns(2)
-            with m_col1:
-                st.markdown(f"""
-                <div style="background: rgba(0, 210, 255, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 210, 255, 0.3); text-align: center;">
+            # Check if value tip is meaningful
+            has_value = True
+            if not value_tip or "Nincs Value" in value_tip or "Nincs adat" in value_tip or "Nincs érték" in value_tip:
+                 has_value = False
+
+            if has_value:
+                m_col1, m_col2 = st.columns(2)
+                with m_col1:
+                    st.markdown(f"""
+                    <div style="background: rgba(0, 210, 255, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 210, 255, 0.3); text-align: center;">
+                        <h3 style="margin:0; color: #00d2ff;">PONTOS EREDMÉNY</h3>
+                        <h1 style="margin:10px 0; font-size: 3rem;">{score_tip}</h1>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with m_col2:
+                    st.markdown(f"""
+                    <div style="background: rgba(255, 0, 100, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(255, 0, 100, 0.3); text-align: center;">
+                        <h3 style="margin:0; color: #ff0064;">VALUE TIPP</h3>
+                        <h2 style="margin:15px 0; font-size: 1.8rem;">{value_tip}</h2>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                 st.markdown(f"""
+                <div style="background: rgba(0, 210, 255, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 210, 255, 0.3); text-align: center; max-width: 600px; margin: 0 auto;">
                     <h3 style="margin:0; color: #00d2ff;">PONTOS EREDMÉNY</h3>
                     <h1 style="margin:10px 0; font-size: 3rem;">{score_tip}</h1>
-                </div>
-                """, unsafe_allow_html=True)
-            with m_col2:
-                st.markdown(f"""
-                <div style="background: rgba(255, 0, 100, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(255, 0, 100, 0.3); text-align: center;">
-                    <h3 style="margin:0; color: #ff0064;">VALUE TIPP</h3>
-                    <h2 style="margin:15px 0; font-size: 1.8rem;">{value_tip}</h2>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -506,10 +519,14 @@ with tab1:
                          st.markdown("##### 🎲 Győzelmi Valószínűségek")
                          p_col1, p_col2, p_col3 = st.columns(3)
                          
-                         # Helper to clean percent string
+                         # Helper to clean percent string (Fixed for decimals)
                          def clean_pct(val):
                              if not val or val == 'N/A': return 0
-                             return int(re.sub(r'\D', '', str(val)))
+                             # Extract number including decimals
+                             match = re.search(r'(\d+(\.\d+)?)', str(val))
+                             if match:
+                                 return float(match.group(1))
+                             return 0
 
                          h_val = clean_pct(stat_json.get('home_win_percent', '0'))
                          d_val = clean_pct(stat_json.get('draw_percent', '0'))
