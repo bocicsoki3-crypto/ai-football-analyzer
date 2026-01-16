@@ -8,6 +8,7 @@ class AICommittee:
     def __init__(self):
         self.groq_client = None
         self.tavily_client = None
+        self.last_prompts = {}
     
     def _setup_clients(self):
         # Initialize Groq
@@ -17,17 +18,36 @@ class AICommittee:
         if not self.tavily_client and os.environ.get("TAVILY_API_KEY"):
             self.tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
+    def get_last_prompts(self):
+        return self.last_prompts
+
     def run_statistician(self, match_data):
-        # Use Ollama (qwen2.5:7b)
+        self._setup_clients()
+        
+        # Extract computed stats if available
+        comp_stats = match_data.get('computed_stats', {})
+        h_corn = comp_stats.get('home_team_corners', 'Nincs adat')
+        a_corn = comp_stats.get('away_team_corners', 'Nincs adat')
+        h_card = comp_stats.get('home_team_yellow_cards', 'Nincs adat')
+        a_card = comp_stats.get('away_team_yellow_cards', 'Nincs adat')
+        
+        # Use Ollama (qwen2.5:7b) or Groq
         prompt = f"""
         TE VAGY A STATISZTIKUS (AI Agent). A világ legjobb sportfogadási matematikusa.
         
         Adatok: {json.dumps(match_data)}
         
+        KONKRÉT SZEZONBELI ÁTLAGOK (RapidAPI):
+        - Hazai Szöglet Átlag: {h_corn}
+        - Vendég Szöglet Átlag: {a_corn}
+        - Hazai Sárga Lap Átlag: {h_card}
+        - Vendég Sárga Lap Átlag: {a_card}
+        
         SZIGORÚ UTASÍTÁS:
         1. KERÜLD az általánosításokat (pl. "szoros meccs várható").
         2. SZÁMSZERŰSÍTS: Minden állítást támassz alá konkrét számokkal (pl. "A hazai csapat xG mutatója az utolsó 3 meccsen 2.1, míg a vendégeké csak 0.8").
-        3. SÚLYOZOTT ELEMZÉS: A sérülteket és az eltiltottakat ne csak felsorold, hanem határozd meg a hiányuk számszerű hatását a csapat erejére (pl. "A kezdőkapus hiánya miatt a kapott gólok valószínűsége 15%-kal nő").
+        3. SÚLYOZOTT ELEMZÉS: A sérülteket és az eltiltottakat ne csak felsorold, hanem határozd meg a hiányuk számszerű hatását a csapat erejére.
+        4. TILOS ISMÉTLÉS: Tilos ugyanazt a százalékot adnod, mint egy sablon! Minden számot (BTTS, Over 2.5, Szögletek) a fenti KONKRÉT adatokból számolj ki újra!
         
         FELADAT:
         Végezz mély statisztikai elemzést. Ne csak átlagolj, hanem súlyozz!
@@ -36,11 +56,11 @@ class AICommittee:
         3. POISSON ELOSZLÁS: Becsüld meg a várható gólokat (xG) a védelmi és támadási erők alapján.
         
         KÖTELEZŐ SZÁMÍTÁSOK (Valós adatokból):
-        - Szögletek: (Hazai otthoni átlag + Vendég idegenbeli átlag) korrigálva a csapatok stílusával.
+        - Szögletek: Ha az adatok szerint kevés a szöglet (pl. átlagok összege < 8), írj keveset! Ne hasalj be 9-et, ha a statisztika 4-et mutat!
         - Lapok: (Hazai lap átlag + Vendég lap átlag + Bíró szigora ha van).
         - BTTS (Mindkét csapat lő gólt): Konkrét képlet alapján! (Hazai otthoni gólszerzési % + Vendég idegenbeli gólszerzési %) / 2. NE HASALJ (pl. 58% helyett 58.4%)!
         - Over 2.5: A várható gólok (xG) összegéből számolj Poisson eloszlással pontos %-ot!
-
+        
         KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
         {{
             "home_win_percent": "XX%",
@@ -50,43 +70,43 @@ class AICommittee:
             "expected_cards": "Over/Under X.5 (pl. 'Over 4.5' - Indoklás: Parázs meccs várható)",
             "btts_percent": "XX.X%",
             "over_2_5_percent": "XX.X%",
-            "analysis": "Tömör, profi elemzés konkrét számokkal. Pl: 'A Hazai csapat otthon veretlen, xG: 2.1. A Vendég védelme idegenben lyukas (2.1 kapott gól/meccs). Kulcsjátékos hiánya miatt a hazai győzelem esélye 10%-kal csökken.'"
+            "analysis": "Tömör, profi elemzés konkrét számokkal."
         }}
         
         Csak a JSON objektumot add vissza!
         """
         
+        self.last_prompts['statistician'] = prompt
+
         try:
+            # Prefer Groq for better instruction following if available, otherwise Ollama
+            if self.groq_client:
+                 completion = self.groq_client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7
+                    )
+                 content = completion.choices[0].message.content
+                 # Clean up potential markdown code blocks
+                 if "```json" in content:
+                        content = content.split("```json")[1].split("```")[0]
+                 elif "```" in content:
+                        content = content.split("```")[1]
+                 return content.strip()
+            
+            # Fallback to Ollama
             response = ollama.chat(model='qwen2.5:7b', messages=[
                 {'role': 'user', 'content': prompt},
             ])
             content = response['message']['content']
-            # Clean up potential markdown code blocks
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0]
             elif "```" in content:
                 content = content.split("```")[1]
             return content.strip()
+
         except Exception as e:
-            # Fallback to Groq if Ollama fails
-            self._setup_clients()
-            if self.groq_client:
-                try:
-                    completion = self.groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.1
-                    )
-                    content = completion.choices[0].message.content
-                    # Clean up potential markdown code blocks
-                    if "```json" in content:
-                        content = content.split("```json")[1].split("```")[0]
-                    elif "```" in content:
-                        content = content.split("```")[1]
-                    return content.strip()
-                except Exception as groq_e:
-                    return f'{{"error": "Hiba a Statisztikusnál (Ollama & Groq): {str(e)} | {str(groq_e)}"}}'
-            return f'{{"error": "Hiba a Statisztikusnál (Ollama): {str(e)}"}}'
+            return f'{{"error": "Hiba a Statisztikusnál: {str(e)}"}}'
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None):
         self._setup_clients()
@@ -100,7 +120,7 @@ class AICommittee:
                 # Kiterjesztett keresés: xG, xGA, PPG, hiányzók, MOTIVÁCIÓ, BÍRÓ, IDŐJÁRÁS, ODDS
                 query = f"""
                 site:fbref.com OR site:footystats.org OR site:transfermarkt.com OR site:whoscored.com OR site:flashscore.com 
-                {home_team} vs {away_team} match stats injuries lineups referee stats weather forecast betting odds 
+                {home_team} vs {away_team} head to head results last 5 matches injuries lineups referee stats weather forecast betting odds 
                 relegation battle cup rotation motivation
                 """
                 # Clean up query string
@@ -137,18 +157,21 @@ class AICommittee:
         KÖVETELMÉNYEK:
         1. MOTIVÁCIÓS FAKTOR: Van-e tétje a meccsnek? Kiesés elleni harc, kupaszereplés miatti pihentetés? Írd le!
         2. BÍRÓI STATISZTIKA: Ha találsz adatot a bíróról (sárga/piros lap átlag, büntetők), írd le!
-        3. PÁLYAÁLLAPOT/IDŐJÁRÁS: Befolyásolja az időjárás (eső, hó, szél) a játékot?
-        4. ODDSOK: Ha találsz fogadási oddsokat a szövegben, jegyezd fel őket az "Érték" számításhoz!
-        5. HIÁNYZÓK HATÁSA: Konkrétan nevezd meg a kulcshianyozókat.
+        3. EGYMÁS ELLENI (H2H): Ha a keresésben találtál friss H2H eredményeket (Fbref/Footystats), sorold fel a legutóbbi 3-at!
+        4. PÁLYAÁLLAPOT/IDŐJÁRÁS: Befolyásolja az időjárás (eső, hó, szél) a játékot?
+        5. ODDSOK: Ha találsz fogadási oddsokat a szövegben, jegyezd fel őket az "Érték" számításhoz!
+        6. HIÁNYZÓK HATÁSA: Konkrétan nevezd meg a kulcshianyozókat.
         
         Kimeneted legyen tömör, lényegretörő, mint egy titkos jelentés az edzőnek. Említsd meg a forrást.
         """
+        
+        self.last_prompts['scout'] = prompt
         
         try:
             completion = self.groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
+                temperature=0.7
             )
             return completion.choices[0].message.content
         except Exception as e:
@@ -173,11 +196,13 @@ class AICommittee:
         Írj le egy forgatókönyvet arról, hogyan fog kinézni a játék képe a pályán!
         """
         
+        self.last_prompts['tactician'] = prompt
+        
         try:
             completion = self.groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile", # Or mix models
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.3
+                temperature=0.7
             )
             return completion.choices[0].message.content
         except Exception as e:
@@ -228,19 +253,20 @@ class AICommittee:
         **VALUE TIPP**: [CSAK A TIPP TÖMÖREN! pl. "Hazai győzelem @ 2.10 (Value: 8%)". Ha nincs value, írd: "Nincs Value".]
         """
         
+        self.last_prompts['boss'] = prompt
+        
         try:
             completion = self.groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.2
+                temperature=0.7
             )
             return completion.choices[0].message.content
         except Exception as e:
             return f"Hiba a Főnöknél: {str(e)}"
 
     def run_prophet(self, match_data, home_team, away_team):
-        # Use Ollama (qwen2.5:7b) - Already defined above in previous search_replace, 
-        # but this block is to replace the OLD run_prophet method in the file
+        # Use Ollama (qwen2.5:7b)
         prompt = f"""
         TE VAGY A PRÓFÉTA (AI Agent). Jövőbelátó.
         
@@ -269,6 +295,8 @@ class AICommittee:
         Csak a JSON tömböt add vissza, semmi mást!
         """
         
+        self.last_prompts['prophet'] = prompt
+        
         try:
             response = ollama.chat(model='qwen2.5:7b', messages=[
                 {'role': 'user', 'content': prompt},
@@ -287,7 +315,7 @@ class AICommittee:
                     completion = self.groq_client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
                         messages=[{"role": "user", "content": prompt}],
-                        temperature=0.2
+                        temperature=0.7
                     )
                     content = completion.choices[0].message.content
                     if "```json" in content:

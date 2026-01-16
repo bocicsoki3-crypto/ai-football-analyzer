@@ -268,7 +268,7 @@ with tab2:
             details = st.session_state['raw_match_details']
             
             # Create sub-tabs for data categories
-            d_tab1, d_tab2, d_tab3, d_tab4, d_tab5 = st.tabs(["🏆 Tabella", "🚑 Sérültek", "⚔️ H2H", "📊 Csapat Statok", "🌐 Hírszerző Források"])
+            d_tab1, d_tab2, d_tab3, d_tab4, d_tab5, d_tab6 = st.tabs(["🏆 Tabella", "🚑 Sérültek", "⚔️ H2H", "📊 Csapat Statok", "🌐 Hírszerző Források", "🛠️ Prompt Debug"])
             
             with d_tab1:
                 st.subheader("Bajnoki Tabella")
@@ -294,6 +294,13 @@ with tab2:
             
             with d_tab4:
                 st.subheader("Csapat Statisztikák")
+                
+                # Show computed stats if available
+                if 'computed_stats' in details:
+                    st.write("##### 🧮 Kiszámolt Átlagok (AI Bemenet)")
+                    st.json(details['computed_stats'])
+                    st.markdown("---")
+
                 col_h, col_a = st.columns(2)
                 with col_h:
                     st.write(f"**{match['teams']['home']['name']}**")
@@ -311,6 +318,19 @@ with tab2:
                     st.info("A fenti szöveg a Hírszerző által talált és feldolgozott információkat tartalmazza.")
                 else:
                     st.warning("Még nem futott le az elemzés, így nincs hírszerzési adat.")
+
+            with d_tab6:
+                st.subheader("🛠️ AI Prompt Log (Fejlesztői mód)")
+                st.info("Itt láthatod, hogy pontosan milyen utasításokat kapott az AI. Ellenőrizd a bemeneti adatokat!")
+                
+                prompts = ai_committee.get_last_prompts()
+                if prompts:
+                    for agent, prompt in prompts.items():
+                        with st.expander(f"📝 {agent.upper()} Prompt", expanded=False):
+                            st.code(prompt, language="markdown")
+                else:
+                    st.warning("Még nincs rögzített prompt. Futtass egy elemzést!")
+
 
     else:
         st.info("Válassz egy meccset a bal oldali menüből az adatok megtekintéséhez!")
