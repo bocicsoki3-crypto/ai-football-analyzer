@@ -89,8 +89,9 @@ class AICommittee:
         # Tavily Search Integration
         if self.tavily_client:
             try:
-                query = f"site:fbref.com OR site:footystats.org OR site:transfermarkt.com OR site:whoscored.com OR site:flashscore.com {home_team} vs {away_team} injuries, expected lineups, corner stats, card stats today"
-                search_result = self.tavily_client.search(query, search_depth="advanced", max_results=5)
+                # Kiterjesztett keresés: xG, xGA, PPG, hiányzók
+                query = f"site:fbref.com OR site:footystats.org OR site:transfermarkt.com OR site:whoscored.com OR site:flashscore.com {home_team} vs {away_team} stats xG xGA PPG injuries lineups corners cards today"
+                search_result = self.tavily_client.search(query, search_depth="advanced", max_results=7)
                 
                 context_parts = []
                 if 'results' in search_result:
@@ -119,8 +120,9 @@ class AICommittee:
         KÖVETELMÉNYEK:
         1. SOHA ne használj sablon válaszokat!
         2. Minden állítást (sérültek, várható kezdő, forma) KONKRÉT forrással és adatokkal támassz alá a fenti szövegekből.
-        3. Keresd a sérülteket, eltiltottakat, és a csapatok várható kezdőjét.
-        4. Említsd meg a forrást (pl. "Az Fbref szerint...", "A Whoscored adatai alapján...").
+        3. KERESD MEG A HIÁNYZÓ STATISZTIKÁKAT: Ha a szövegekben találsz xG, xGA, PPG vagy szöglet adatokat, azokat feltétlenül emeld ki!
+        4. Keresd a sérülteket, eltiltottakat, és a csapatok várható kezdőjét.
+        5. Említsd meg a forrást (pl. "Az Fbref szerint...", "A Footystats adatai alapján...").
         
         Ha nincs elég infó a keresésben, akkor hagyatkozz az általános tudásodra, de jelezd, hogy ez nem friss adat.
         """
