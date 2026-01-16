@@ -2,15 +2,20 @@ import os
 from groq import Groq
 import json
 import ollama
+from tavily import TavilyClient
 
 class AICommittee:
     def __init__(self):
         self.groq_client = None
+        self.tavily_client = None
     
     def _setup_clients(self):
         # Initialize Groq
         if not self.groq_client and os.environ.get("GROQ_API_KEY"):
             self.groq_client = Groq(api_key=os.environ["GROQ_API_KEY"])
+        # Initialize Tavily
+        if not self.tavily_client and os.environ.get("TAVILY_API_KEY"):
+            self.tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
 
     def run_statistician(self, match_data):
         # Use Ollama (qwen2.5:7b)
@@ -77,17 +82,47 @@ class AICommittee:
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None):
         self._setup_clients()
+        
+        search_context = ""
+        sources_used = []
+        
+        # Tavily Search Integration
+        if self.tavily_client:
+            try:
+                query = f"site:fbref.com OR site:footystats.org OR site:transfermarkt.com OR site:whoscored.com OR site:flashscore.com {home_team} vs {away_team} injuries, expected lineups, corner stats, card stats today"
+                search_result = self.tavily_client.search(query, search_depth="advanced", max_results=5)
+                
+                context_parts = []
+                if 'results' in search_result:
+                    for res in search_result['results']:
+                        context_parts.append(f"Forrás: {res['url']}\nTartalom: {res['content']}")
+                        sources_used.append(res['url'])
+                
+                search_context = "\n\n".join(context_parts)
+            except Exception as e:
+                search_context = f"Hiba a Tavily keresésnél: {str(e)}"
+
         if not self.groq_client:
-            return "Groq API Key hiányzik."
+            return f"Groq API Key hiányzik. (Tavily infó: {len(sources_used)} forrás)"
             
         prompt = f"""
         TE VAGY A HÍRSZERZŐ (Groq - Llama 3.3 70B).
         
         Meccs: {home_team} vs {away_team}
         
+        FRISS INTERNETES KERESÉSI ADATOK (Tavily):
+        {search_context}
+        
         FELADAT:
-        Mivel nincs közvetlen internetelérésed, elemezd a csapatok általános keretét és a szezon során tapasztalt tipikus hiányzókat vagy gyenge pontokat a rendelkezésre álló tudásod alapján.
-        Ha vannak ismert sérülékeny pontjai a védelemnek, emeld ki azokat!
+        Elemezd a csapatok aktuális helyzetét a fenti keresési találatok alapján.
+        
+        KÖVETELMÉNYEK:
+        1. SOHA ne használj sablon válaszokat!
+        2. Minden állítást (sérültek, várható kezdő, forma) KONKRÉT forrással és adatokkal támassz alá a fenti szövegekből.
+        3. Keresd a sérülteket, eltiltottakat, és a csapatok várható kezdőjét.
+        4. Említsd meg a forrást (pl. "Az Fbref szerint...", "A Whoscored adatai alapján...").
+        
+        Ha nincs elég infó a keresésben, akkor hagyatkozz az általános tudásodra, de jelezd, hogy ez nem friss adat.
         """
         
         try:
