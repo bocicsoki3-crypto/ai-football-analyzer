@@ -44,6 +44,7 @@ A weboldal elindítása után hibát fog dobni ("App needs secrets"), mert a fel
 ```toml
 RAPIDAPI_KEY = "IDE_ÍRD_A_RAPIDAPI_KULCSODAT"
 GROQ_API_KEY = "IDE_ÍRD_A_GROQ_KULCSODAT"
+TAVILY_API_KEY = "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"
 APP_PASSWORD = "admin123"
 ```
 
