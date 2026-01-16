@@ -20,29 +20,30 @@ class AICommittee:
     def run_statistician(self, match_data):
         # Use Ollama (qwen2.5:7b)
         prompt = f"""
-        TE VAGY A STATISZTIKUS (AI Agent).
+        TE VAGY A STATISZTIKUS (AI Agent). A világ legjobb sportfogadási matematikusa.
         
         Adatok: {json.dumps(match_data)}
         
         FELADAT:
-        Számolj és becsülj Poisson-eloszlás és a megadott adatok alapján:
-        1. Várható Gólok (xG) mindkét csapatra.
-        2. Győzelmi esélyek (Hazai / Döntetlen / Vendég) százalékban.
-        3. Várható Szögletek (Corners): SZÁMOLD KI a csapatok átlagaiból! Ha nincs adat, írd: "Nincs adat". Ha van, adj meg egy KONKRÉT fogadási határt (pl. "Over 9.5" ha az átlag 10.2).
-        4. Várható Lapok (Cards): SZÁMOLD KI a csapatok átlagaiból! Ha nincs adat, írd: "Nincs adat". Ha van, adj meg egy KONKRÉT fogadási határt (pl. "Over 3.5" ha az átlag 4.1).
-        5. BTTS (Both Teams To Score) valószínűsége %.
-        6. Over/Under 2.5 Gól valószínűsége %.
+        Végezz mély statisztikai elemzést. Ne csak átlagolj, hanem súlyozz!
+        1. FORMÁK: A legutóbbi 5 meccs eredménye fontosabb, mint az egész szezon.
+        2. HAZAI/VENDÉG TELJESÍTMÉNY: Külön kezeld a Hazai csapat otthoni és a Vendég idegenbeli mutatóit.
+        3. POISSON ELOSZLÁS: Becsüld meg a várható gólokat (xG) a védelmi és támadási erők alapján.
+        
+        KÖTELEZŐ SZÁMÍTÁSOK (Valós adatokból):
+        - Szögletek: (Hazai otthoni átlag + Vendég idegenbeli átlag) korrigálva a csapatok stílusával.
+        - Lapok: (Hazai lap átlag + Vendég lap átlag + Bíró szigora ha van).
 
         KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
         {{
             "home_win_percent": "XX%",
             "draw_percent": "XX%",
             "away_win_percent": "XX%",
-            "expected_corners": "Over/Under X.5 (vagy Nincs adat)",
-            "expected_cards": "Over/Under X.5 (vagy Nincs adat)",
+            "expected_corners": "Over/Under X.5 (pl. 'Over 9.5' - Indoklás: Hazai 6.5 + Vendég 4.0)",
+            "expected_cards": "Over/Under X.5 (pl. 'Over 4.5' - Indoklás: Parázs meccs várható)",
             "btts_percent": "XX%",
             "over_2_5_percent": "XX%",
-            "analysis": "Írd le pontosan, miből számoltál! Pl: 'Hazai átlag 6.2 szöglet, Vendég 4.1, összesen 10.3 -> Over 9.5'."
+            "analysis": "Tömör, profi elemzés. Pl: 'A Hazai csapat otthon veretlen, míg a Vendég védelme idegenben lyukas (2.1 kapott gól/meccs). Az xG modell 2-0-át valószínűsít.'"
         }}
         
         Csak a JSON objektumot add vissza!
@@ -107,7 +108,7 @@ class AICommittee:
             return f"Groq API Key hiányzik. (Tavily infó: {len(sources_used)} forrás)"
             
         prompt = f"""
-        TE VAGY A HÍRSZERZŐ (Groq - Llama 3.3 70B).
+        TE VAGY A HÍRSZERZŐ (Groq - Llama 3.3 70B). Egy oknyomozó sportújságíró.
         
         Meccs: {home_team} vs {away_team}
         
@@ -115,16 +116,15 @@ class AICommittee:
         {search_context}
         
         FELADAT:
-        Elemezd a csapatok aktuális helyzetét a fenti keresési találatok alapján.
+        Ne csak felsorold a híreket, hanem ÉRTÉKELD ŐKET!
         
         KÖVETELMÉNYEK:
-        1. SOHA ne használj sablon válaszokat!
-        2. Minden állítást (sérültek, várható kezdő, forma) KONKRÉT forrással és adatokkal támassz alá a fenti szövegekből.
-        3. KERESD MEG A HIÁNYZÓ STATISZTIKÁKAT: Ha a szövegekben találsz xG, xGA, PPG vagy szöglet adatokat, azokat feltétlenül emeld ki!
-        4. Keresd a sérülteket, eltiltottakat, és a csapatok várható kezdőjét.
-        5. Említsd meg a forrást (pl. "Az Fbref szerint...", "A Footystats adatai alapján...").
+        1. HIÁNYZÓK HATÁSA: Ha a csapat legjobb góllövője (pl. Haaland) sérült, írd le: "Kulcsjátékos hiányzik -> Gólok száma csökkenhet".
+        2. FÁRADTSÁG: Ha valamelyik csapat 3 napja játszott, említsd meg a fáradtságot.
+        3. MOTIVÁCIÓ: Kiesés ellen küzdenek? Bajnoki cím a tét? Ez döntő lehet!
+        4. TÉNYEK: Csak akkor írj le valamit, ha a fenti források alátámasztják.
         
-        Ha nincs elég infó a keresésben, akkor hagyatkozz az általános tudásodra, de jelezd, hogy ez nem friss adat.
+        Kimeneted legyen tömör, lényegretörő, mint egy titkos jelentés az edzőnek.
         """
         
         try:
@@ -143,13 +143,17 @@ class AICommittee:
             return "Groq API Key hiányzik."
             
         prompt = f"""
-        TE VAGY A TAKTIKUS (Groq).
+        TE VAGY A TAKTIKUS (Groq). Egy labdarúgó edző.
         
         Adatok: {json.dumps(match_data)}
         
         FELADAT:
-        Elemezd a stílusokat (pl. letámadás vs. kontra) a meccs kontextusában.
-        Hogyan illeszkedik a két csapat stílusa egymáshoz?
+        Vizualizáld a mérkőzést a számok alapján!
+        1. LABDABIRTOKLÁS: Ki fogja dominálni a játékot? (Pl. Hazai passzpontosság 88% -> Dominancia várható).
+        2. KONTRAJÁTÉK: A vendégcsapat veszélyes kontrákból?
+        3. VÉDEKEZÉS: Magasan védekeznek vagy buszt tolnak a kapu elé?
+        
+        Írj le egy forgatókönyvet arról, hogyan fog kinézni a játék képe a pályán!
         """
         
         try:
@@ -172,7 +176,7 @@ class AICommittee:
             lessons_text = "\n".join(lessons)
             
         prompt = f"""
-        TE VAGY A FŐNÖK (Groq - Llama 3.3 70B).
+        TE VAGY A FŐNÖK (Groq - Llama 3.3 70B). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (MEMÓRIA):
         {lessons_text}
@@ -180,23 +184,24 @@ class AICommittee:
         VEDD FIGYELEMBE EZEKET A TANULSÁGOKAT A DÖNTÉSNÉL!
         
         BEMENETEK:
-        1. STATISZTIKUS JELENTÉSE: {statistician_report}
-        2. HÍRSZERZŐ JELENTÉSE (Sérültek, H2H, Bíró): {scout_report}
-        3. TAKTIKUS JELENTÉSE: {tactician_report}
+        1. STATISZTIKUS JELENTÉSE (Matek): {statistician_report}
+        2. HÍRSZERZŐ JELENTÉSE (Hírek): {scout_report}
+        3. TAKTIKUS JELENTÉSE (Játék képe): {tactician_report}
         4. MECCS ADATOK: {json.dumps(match_data)}
         
         FELADAT:
-        Vesd össze az adatokat. Keresd a piaci rést (Value Betting)!
-        Ha a statisztika hazait mond, de a hírszerző szerint sok a sérült, korrigálj!
-        Figyelj az xG (Várható gólok) és a forma tendenciákra az adatokból.
+        Hozz megkérdőjelezhetetlen döntést.
+        - Ha a Statisztikus HAZAIT mond, de a Hírszerző szerint a fél csapat sérült -> Fogadj ELLENE vagy hagyd ki!
+        - Keresd az "Értéket" (Value). Ahol a bukmékerek tévednek.
+        - Légy szigorú! Csak akkor adj tippet, ha 70% feletti a biztonság.
         
         KIMENETI FORMÁTUM (Szigorúan ezt kövesd):
         
-        **RÖVID ELEMZÉS**: [2-3 mondat összefoglaló, indoklással]
+        **RÖVID ELEMZÉS**: [3-4 mondat, ami szintetizálja az ellentmondásokat. Indokold meg, miért döntöttél így!]
         
-        **PONTOS VÉGEREDMÉNY TIPP**: [CSAK A SZÁM! pl. 2-1. SEMMI MÁS SZÖVEG!]
+        **PONTOS VÉGEREDMÉNY TIPP**: [CSAK A SZÁM! pl. 2-1. Reális eredmény legyen!]
         
-        **VALUE TIPP**: [CSAK A TIPP TÖMÖREN! pl. Hazai győzelem vagy BTTS. SEMMI MAGYARÁZAT!]
+        **VALUE TIPP**: [CSAK A TIPP TÖMÖREN! pl. Hazai győzelem @ 1.85 (becsült). SEMMI MAGYARÁZAT!]
         """
         
         try:
@@ -213,22 +218,22 @@ class AICommittee:
         # Use Ollama (qwen2.5:7b) - Already defined above in previous search_replace, 
         # but this block is to replace the OLD run_prophet method in the file
         prompt = f"""
-        TE VAGY A PRÓFÉTA (AI Agent).
+        TE VAGY A PRÓFÉTA (AI Agent). Jövőbelátó.
         
         Meccs: {home_team} vs {away_team}
         Adatok: {json.dumps(match_data)}
         
         FELADAT:
-        Készíts egy "Mérkőzés Forgatókönyvet" (Match Scenario).
-        Oszd fel a mérkőzést 15 perces szakaszokra.
-        Jósolj meg eseményeket (gól, lap, dominancia) minden szakaszra.
+        Készíts egy VALÓSZERŰ meccs-timeline-t.
+        NE TALÁLJ KI őrült dolgokat, maradj a realitások talaján!
+        - Ha a statisztika szerint a Hazai csapat a 2. félidőben erős, akkor oda tedd a gólokat.
+        - Ha sok a lap (lásd Statisztikus), akkor legyenek sárgák.
         
         KIMENETI FORMÁTUM (JSON ARRAY):
         [
-            {{"period": "0-15'", "event": "...", "score_after": "0-0"}},
-            {{"period": "16-30'", "event": "...", "score_after": "..."}},
+            {{"period": "0-15'", "event": "Tapogatózó játék, mezőnyharc", "score_after": "0-0"}},
+            {{"period": "16-30'", "event": "Hazai nyomás, kapufa", "score_after": "0-0"}},
             ...
-            {{"period": "76-90'", "event": "...", "score_after": "..."}}
         ]
         
         Csak a JSON tömböt add vissza, semmi mást!
