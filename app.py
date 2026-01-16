@@ -230,7 +230,76 @@ st.title("⚽ AI Committee Football Analyzer Pro")
 st.markdown("---")
 
 # Tabs
-tab1, tab2 = st.tabs(["📅 Napi Elemzés", "📚 Archívum/Tanulságok"])
+tab1, tab2, tab3 = st.tabs(["📅 Napi Elemzés", "📊 Részletes Adatok (Forrás)", "📚 Archívum/Tanulságok"])
+
+with tab2:
+    if 'current_match_obj' in st.session_state:
+        match = st.session_state['current_match_obj']
+        fixture_id = match['fixture']['id']
+        home_id = match['teams']['home']['id']
+        away_id = match['teams']['away']['id']
+        league_id = match['league']['id']
+        season = match['league']['season']
+        
+        st.header("🔍 Részletes Mérkőzés Adatok (Nyers Forrás)")
+        
+        # We need to fetch details if not already fetched, but usually we fetch on analyze.
+        # Let's provide a button to view raw data even before analysis
+        if st.button("📥 Nyers Adatok Betöltése Megtekintéshez"):
+             with st.spinner("Adatok lekérése az API-ból..."):
+                 raw_details = data_manager.get_match_details(fixture_id, home_id, away_id, league_id, season)
+                 st.session_state['raw_match_details'] = raw_details
+        
+        if 'raw_match_details' in st.session_state:
+            details = st.session_state['raw_match_details']
+            
+            # Create sub-tabs for data categories
+            d_tab1, d_tab2, d_tab3, d_tab4, d_tab5 = st.tabs(["🏆 Tabella", "🚑 Sérültek", "⚔️ H2H", "📊 Csapat Statok", "🌐 Hírszerző Források"])
+            
+            with d_tab1:
+                st.subheader("Bajnoki Tabella")
+                st.dataframe(details.get('standings', []))
+                
+            with d_tab2:
+                st.subheader("Sérültek és Eltiltottak")
+                injuries = details.get('injuries', [])
+                if injuries:
+                    for inj in injuries:
+                        st.write(f"🩹 {inj}")
+                else:
+                    st.info("Nincs jelentett sérült az adatbázisban.")
+                    
+            with d_tab3:
+                st.subheader("Egymás Elleni Eredmények (H2H)")
+                h2h = details.get('h2h', [])
+                if h2h:
+                    for h in h2h:
+                        st.write(f"⚔️ {h}")
+                else:
+                    st.info("Nincs korábbi H2H adat.")
+            
+            with d_tab4:
+                st.subheader("Csapat Statisztikák")
+                col_h, col_a = st.columns(2)
+                with col_h:
+                    st.write(f"**{match['teams']['home']['name']}**")
+                    st.json(details.get('home_team', {}))
+                with col_a:
+                    st.write(f"**{match['teams']['away']['name']}**")
+                    st.json(details.get('away_team', {}))
+
+            with d_tab5:
+                st.subheader("🌐 Felhasznált Hírforrások (Tavily)")
+                if 'analysis_results' in st.session_state:
+                    scout_res = st.session_state['analysis_results']['scout']
+                    # Try to extract sources from Scout report text if formatted
+                    st.write(scout_res) 
+                    st.info("A fenti szöveg a Hírszerző által talált és feldolgozott információkat tartalmazza.")
+                else:
+                    st.warning("Még nem futott le az elemzés, így nincs hírszerzési adat.")
+
+    else:
+        st.info("Válassz egy meccset a bal oldali menüből az adatok megtekintéséhez!")
 
 with tab1:
     if 'current_match_obj' in st.session_state:
@@ -259,6 +328,8 @@ with tab1:
                 # 1. Gather detailed data
                 st.write("📊 Adatok gyűjtése a mérkőzésről (Sérültek, H2H, Statisztikák)...")
                 match_details = data_manager.get_match_details(fixture_id, home_id, away_id, league_id, season)
+                # Store raw details for the other tab
+                st.session_state['raw_match_details'] = match_details
                 
                 # Extract referee and venue if available
                 referee = match['fixture'].get('referee', 'Ismeretlen')
@@ -471,7 +542,7 @@ with tab1:
         """, unsafe_allow_html=True)
 
 
-with tab2:
+with tab3:
     st.header("Archívum és Tanulságok")
     
     predictions = db_manager.get_all_predictions()
