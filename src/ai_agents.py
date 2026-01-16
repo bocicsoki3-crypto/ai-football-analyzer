@@ -24,6 +24,11 @@ class AICommittee:
         
         Adatok: {json.dumps(match_data)}
         
+        SZIGORÚ UTASÍTÁS:
+        1. KERÜLD az általánosításokat (pl. "szoros meccs várható").
+        2. SZÁMSZERŰSÍTS: Minden állítást támassz alá konkrét számokkal (pl. "A hazai csapat xG mutatója az utolsó 3 meccsen 2.1, míg a vendégeké csak 0.8").
+        3. SÚLYOZOTT ELEMZÉS: A sérülteket és az eltiltottakat ne csak felsorold, hanem határozd meg a hiányuk számszerű hatását a csapat erejére (pl. "A kezdőkapus hiánya miatt a kapott gólok valószínűsége 15%-kal nő").
+        
         FELADAT:
         Végezz mély statisztikai elemzést. Ne csak átlagolj, hanem súlyozz!
         1. FORMÁK: A legutóbbi 5 meccs eredménye fontosabb, mint az egész szezon.
@@ -43,7 +48,7 @@ class AICommittee:
             "expected_cards": "Over/Under X.5 (pl. 'Over 4.5' - Indoklás: Parázs meccs várható)",
             "btts_percent": "XX%",
             "over_2_5_percent": "XX%",
-            "analysis": "Tömör, profi elemzés. Pl: 'A Hazai csapat otthon veretlen, míg a Vendég védelme idegenben lyukas (2.1 kapott gól/meccs). Az xG modell 2-0-át valószínűsít.'"
+            "analysis": "Tömör, profi elemzés konkrét számokkal. Pl: 'A Hazai csapat otthon veretlen, xG: 2.1. A Vendég védelme idegenben lyukas (2.1 kapott gól/meccs). Kulcsjátékos hiánya miatt a hazai győzelem esélye 10%-kal csökken.'"
         }}
         
         Csak a JSON objektumot add vissza!
@@ -90,8 +95,15 @@ class AICommittee:
         # Tavily Search Integration
         if self.tavily_client:
             try:
-                # Kiterjesztett keresés: xG, xGA, PPG, hiányzók
-                query = f"site:fbref.com OR site:footystats.org OR site:transfermarkt.com OR site:whoscored.com OR site:flashscore.com {home_team} vs {away_team} stats xG xGA PPG injuries lineups corners cards today"
+                # Kiterjesztett keresés: xG, xGA, PPG, hiányzók, MOTIVÁCIÓ, BÍRÓ, IDŐJÁRÁS, ODDS
+                query = f"""
+                site:fbref.com OR site:footystats.org OR site:transfermarkt.com OR site:whoscored.com OR site:flashscore.com 
+                {home_team} vs {away_team} match stats injuries lineups referee stats weather forecast betting odds 
+                relegation battle cup rotation motivation
+                """
+                # Clean up query string
+                query = " ".join(query.split())
+                
                 search_result = self.tavily_client.search(query, search_depth="advanced", max_results=7)
                 
                 context_parts = []
@@ -111,20 +123,23 @@ class AICommittee:
         TE VAGY A HÍRSZERZŐ (Groq - Llama 3.3 70B). Egy oknyomozó sportújságíró.
         
         Meccs: {home_team} vs {away_team}
+        Bíró (adatbázisból): {referee if referee else "Ismeretlen"}
+        Helyszín: {venue if venue else "Ismeretlen"}
         
         FRISS INTERNETES KERESÉSI ADATOK (Tavily):
         {search_context}
         
         FELADAT:
-        Ne csak felsorold a híreket, hanem ÉRTÉKELD ŐKET!
+        Ne csak felsorold a híreket, hanem keress specifikus ANOMÁLIÁKAT!
         
         KÖVETELMÉNYEK:
-        1. HIÁNYZÓK HATÁSA: Ha a csapat legjobb góllövője (pl. Haaland) sérült, írd le: "Kulcsjátékos hiányzik -> Gólok száma csökkenhet".
-        2. FÁRADTSÁG: Ha valamelyik csapat 3 napja játszott, említsd meg a fáradtságot.
-        3. MOTIVÁCIÓ: Kiesés ellen küzdenek? Bajnoki cím a tét? Ez döntő lehet!
-        4. TÉNYEK: Csak akkor írj le valamit, ha a fenti források alátámasztják.
+        1. MOTIVÁCIÓS FAKTOR: Van-e tétje a meccsnek? Kiesés elleni harc, kupaszereplés miatti pihentetés? Írd le!
+        2. BÍRÓI STATISZTIKA: Ha találsz adatot a bíróról (sárga/piros lap átlag, büntetők), írd le!
+        3. PÁLYAÁLLAPOT/IDŐJÁRÁS: Befolyásolja az időjárás (eső, hó, szél) a játékot?
+        4. ODDSOK: Ha találsz fogadási oddsokat a szövegben, jegyezd fel őket az "Érték" számításhoz!
+        5. HIÁNYZÓK HATÁSA: Konkrétan nevezd meg a kulcshianyozókat.
         
-        Kimeneted legyen tömör, lényegretörő, mint egy titkos jelentés az edzőnek.
+        Kimeneted legyen tömör, lényegretörő, mint egy titkos jelentés az edzőnek. Említsd meg a forrást.
         """
         
         try:
@@ -178,30 +193,37 @@ class AICommittee:
         prompt = f"""
         TE VAGY A FŐNÖK (Groq - Llama 3.3 70B). A "Keresztapa" a sportfogadásban.
         
-        KORÁBBI HIBÁK ÉS TANULSÁGOK (MEMÓRIA):
+        KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
         {lessons_text}
         
-        VEDD FIGYELEMBE EZEKET A TANULSÁGOKAT A DÖNTÉSNÉL!
+        UTASÍTÁS: KÖTELEZŐEN olvasd el a fenti tanulságokat! Ha egy korábbi tipp nem jött be hasonló szituációban, most dönts máshogy!
         
         BEMENETEK:
-        1. STATISZTIKUS JELENTÉSE (Matek): {statistician_report}
-        2. HÍRSZERZŐ JELENTÉSE (Hírek): {scout_report}
+        1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): {statistician_report}
+        2. HÍRSZERZŐ JELENTÉSE (Hírek, Motiváció, Oddsok): {scout_report}
         3. TAKTIKUS JELENTÉSE (Játék képe): {tactician_report}
         4. MECCS ADATOK: {json.dumps(match_data)}
         
         FELADAT:
-        Hozz megkérdőjelezhetetlen döntést.
+        Hozz megkérdőjelezhetetlen döntést és keress "VALUE"-t (Értéket).
+        
+        VALUE SZÁMÍTÁS (KÖTELEZŐ):
+        - Vesd össze a saját valószínűségszámításodat (vagy a Statisztikusét) a Hírszerző által talált (vagy becsült) piaci oddsokkal.
+        - Csak akkor ajánlj 'Value Tippet', ha az általad számolt esély legalább 5-10%-kal magasabb, mint amit az odds sugall.
+        - Képlet: (Saját % / 100) > (1 / Odds) + 0.05
+        - Ha nem találsz oddsot, becsüld meg, mennyi lenne a reális, és írd oda, hogy "becsült odds alapján".
+        
+        DÖNTÉSI STRATÉGIA:
         - Ha a Statisztikus HAZAIT mond, de a Hírszerző szerint a fél csapat sérült -> Fogadj ELLENE vagy hagyd ki!
-        - Keresd az "Értéket" (Value). Ahol a bukmékerek tévednek.
         - Légy szigorú! Csak akkor adj tippet, ha 70% feletti a biztonság.
         
         KIMENETI FORMÁTUM (Szigorúan ezt kövesd):
         
-        **RÖVID ELEMZÉS**: [3-4 mondat, ami szintetizálja az ellentmondásokat. Indokold meg, miért döntöttél így!]
+        **RÖVID ELEMZÉS**: [3-4 mondat. Indokold meg, miért döntöttél így, és említsd meg, hogyan használtad fel a korábbi tanulságokat!]
         
         **PONTOS VÉGEREDMÉNY TIPP**: [CSAK A SZÁM! pl. 2-1. Reális eredmény legyen!]
         
-        **VALUE TIPP**: [CSAK A TIPP TÖMÖREN! pl. Hazai győzelem @ 1.85 (becsült). SEMMI MAGYARÁZAT!]
+        **VALUE TIPP**: [CSAK A TIPP TÖMÖREN! pl. "Hazai győzelem @ 2.10 (Value: 8%)". Ha nincs value, írd: "Nincs Value".]
         """
         
         try:
@@ -223,16 +245,22 @@ class AICommittee:
         Meccs: {home_team} vs {away_team}
         Adatok: {json.dumps(match_data)}
         
+        SZIGORÚ UTASÍTÁS:
+        1. KERÜLD az általánosításokat.
+        2. SZCENÁRIÓ-ELEMZÉS: A timeline tartalmazzon különböző forgatókönyveket (pl. mi van, ha korai gól esik?).
+        
         FELADAT:
-        Készíts egy VALÓSZERŰ meccs-timeline-t.
-        NE TALÁLJ KI őrült dolgokat, maradj a realitások talaján!
-        - Ha a statisztika szerint a Hazai csapat a 2. félidőben erős, akkor oda tedd a gólokat.
-        - Ha sok a lap (lásd Statisztikus), akkor legyenek sárgák.
+        Készíts egy VALÓSZERŰ meccs-timeline-t 3 különböző forgatókönyv alapján:
+        1. Korai gól forgatókönyve.
+        2. "Szenvedős" 0-0 félidő forgatókönyve.
+        3. Késői dráma (70. perc után).
+        
+        Válassz ki EGYET ezek közül, ami a legvalószínűbb a statisztikák alapján, és bontsd le negyedórákra.
         
         KIMENETI FORMÁTUM (JSON ARRAY):
         [
-            {{"period": "0-15'", "event": "Tapogatózó játék, mezőnyharc", "score_after": "0-0"}},
-            {{"period": "16-30'", "event": "Hazai nyomás, kapufa", "score_after": "0-0"}},
+            {{"period": "0-15'", "event": "Korai nyomás, Hazai kapufa (Forgatókönyv: Dominancia)", "score_after": "0-0"}},
+            {{"period": "16-30'", "event": "Vendég kontra, GÓL! (Forgatókönyv: Kontrajáték)", "score_after": "0-1"}},
             ...
         ]
         
