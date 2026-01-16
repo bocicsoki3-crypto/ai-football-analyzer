@@ -225,6 +225,20 @@ with st.sidebar:
                                  del st.session_state['analysis_results']
                              st.rerun()
 
+import json
+
+# Helper to clean JSON
+def clean_json_string(s):
+    # Remove markdown code blocks
+    s = re.sub(r'```json\s*', '', s)
+    s = re.sub(r'```\s*', '', s)
+    # Find first { and last }
+    start = s.find("{")
+    end = s.rfind("}") + 1
+    if start != -1 and end != -1:
+        s = s[start:end]
+    return s
+
 # Main content
 st.title("⚽ AI Committee Football Analyzer Pro")
 st.markdown("---")
@@ -417,20 +431,9 @@ with tab1:
             stat_json = {}
             try:
                 stat_content = results['statistician']
-                # If it's a string wrapping JSON, try to clean it
                 if isinstance(stat_content, str):
-                    # Replace single quotes with double quotes (sometimes models mess this up)
-                    if "'" in stat_content and '"' not in stat_content:
-                        stat_content = stat_content.replace("'", '"')
-                    
-                    if "{" in stat_content and "}" in stat_content:
-                        # Find the first { and last }
-                        start = stat_content.find("{")
-                        end = stat_content.rfind("}") + 1
-                        json_str = stat_content[start:end]
-                        # Remove newlines and extra spaces
-                        json_str = json_str.replace("\n", "").replace("\r", "")
-                        stat_json = json.loads(json_str)
+                    cleaned = clean_json_string(stat_content)
+                    stat_json = json.loads(cleaned)
                 else:
                     stat_json = stat_content
             except Exception as e:
@@ -440,6 +443,7 @@ with tab1:
                     stat_json['expected_cards'] = re.search(r'"expected_cards":\s*"([^"]+)"', stat_content).group(1)
                     stat_json['btts_percent'] = re.search(r'"btts_percent":\s*"([^"]+)"', stat_content).group(1)
                     stat_json['over_2_5_percent'] = re.search(r'"over_2_5_percent":\s*"([^"]+)"', stat_content).group(1)
+                    stat_json['analysis'] = re.search(r'"analysis":\s*"([^"]+)"', stat_content).group(1)
                 except:
                     pass
             
@@ -497,13 +501,37 @@ with tab1:
             col1, col2 = st.columns(2)
             with col1:
                 with st.expander("📊 STATISZTIKUS JELENTÉSE (Groq)", expanded=True):
-                    # Check if we have parsed analysis, otherwise show raw
-                    if stat_json and 'analysis' in stat_json:
-                         st.info(stat_json['analysis'])
-                         with st.expander("Részletes JSON adatok (Debug)"):
-                             st.code(results['statistician'], language='json')
+                    if stat_json:
+                         # Beautiful Progress Bars for Win Probabilities
+                         st.markdown("##### 🎲 Győzelmi Valószínűségek")
+                         p_col1, p_col2, p_col3 = st.columns(3)
+                         
+                         # Helper to clean percent string
+                         def clean_pct(val):
+                             if not val or val == 'N/A': return 0
+                             return int(re.sub(r'\D', '', str(val)))
+
+                         h_val = clean_pct(stat_json.get('home_win_percent', '0'))
+                         d_val = clean_pct(stat_json.get('draw_percent', '0'))
+                         a_val = clean_pct(stat_json.get('away_win_percent', '0'))
+                         
+                         with p_col1:
+                             st.write(f"🏠 Hazai: **{stat_json.get('home_win_percent', 'N/A')}**")
+                             st.progress(min(h_val, 100) / 100)
+                         with p_col2:
+                             st.write(f"⚖️ Döntetlen: **{stat_json.get('draw_percent', 'N/A')}**")
+                             st.progress(min(d_val, 100) / 100)
+                         with p_col3:
+                             st.write(f"✈️ Vendég: **{stat_json.get('away_win_percent', 'N/A')}**")
+                             st.progress(min(a_val, 100) / 100)
+                         
+                         st.markdown("---")
+                         st.markdown("##### 🧠 Elemzés")
+                         st.info(stat_json.get('analysis', 'Nincs elérhető szöveges elemzés.'))
                     else:
-                        st.write(results['statistician'])
+                        st.error("Nem sikerült értelmezni a Statisztikus válaszát.")
+                        st.code(results['statistician'])
+                        
                 with st.expander("🕵️ HÍRSZERZŐ JELENTÉSE (Groq)", expanded=True):
                     st.write(results['scout'])
             with col2:

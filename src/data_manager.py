@@ -95,7 +95,28 @@ class DataManager:
             response = requests.get(url, headers=self._get_headers(), params=querystring)
             data = response.json()
             if data.get("response"):
-                return data["response"][0]["league"]["standings"]
+                # API returns a list of lists (groups). We usually want the first group or flatten all.
+                # For most leagues it's just one group [[team1, team2...]]
+                raw_standings = data["response"][0]["league"]["standings"]
+                
+                # Flatten the list if it's nested (some leagues have groups)
+                flat_standings = []
+                for group in raw_standings:
+                    for team_data in group:
+                        flat_standings.append({
+                            "Helyezés": team_data['rank'],
+                            "Csapat": team_data['team']['name'],
+                            "M": team_data['all']['played'],
+                            "GY": team_data['all']['win'],
+                            "D": team_data['all']['draw'],
+                            "V": team_data['all']['lose'],
+                            "LG": team_data['all']['goals']['for'],
+                            "KG": team_data['all']['goals']['against'],
+                            "GK": team_data['goalsDiff'],
+                            "Pont": team_data['points'],
+                            "Forma": team_data['form']
+                        })
+                return flat_standings
             return []
         except:
             return []
