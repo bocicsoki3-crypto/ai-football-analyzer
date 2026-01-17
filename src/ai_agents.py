@@ -223,6 +223,13 @@ class AICommittee:
         if lessons:
             lessons_text = "\n".join(lessons)
             
+        h2h_data = match_data.get('h2h', [])
+        standings_data = match_data.get('standings', [])
+        injuries_data = match_data.get('injuries', [])
+        home_stats = match_data.get('home_team', {})
+        away_stats = match_data.get('away_team', {})
+        computed_stats = match_data.get('computed_stats', {})
+
         prompt = f"""
         TE VAGY A FŐNÖK (Mistral / Mixtral). A "Keresztapa" a sportfogadásban.
         
@@ -236,12 +243,22 @@ class AICommittee:
         1. VIZSGÁLD MEG a Hírszerző jelentését (Tavily által gyűjtött friss hírek: Fbref, Footystats, sérülések, motiváció).
         2. VESD ÖSSZE ezt a Statisztikus jelentésével (Llama 3.3 által számolt matematikai valószínűségek).
         3. Ha a hírek (pl. kulcsjátékos hiánya) ellentmondanak a mateknak, a hírek döntsenek!
+        4. KÖTELEZŐEN vedd figyelembe a h2h_data változó tartalmát is a döntésnél!
+        5. KÖTELEZŐEN vizsgáld meg a TABELLA (standings) helyezéseket és a motivációt!
+        6. KÖTELEZŐEN nézd át a SÉRÜLTEK (injuries) listáját és súlyozd a hiányzók fontosságát!
+        7. KÖTELEZŐEN elemezd a CSAPAT STATISZTIKÁKAT (home/away_stats) és a SPECIFIKUS ÁTLAGOKAT (computed_stats)!
         
         BEMENETEK:
         1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): {statistician_report}
         2. HÍRSZERZŐ JELENTÉSE (Hírek, Motiváció, Oddsok): {scout_report}
         3. TAKTIKUS JELENTÉSE (Játék képe): {tactician_report}
-        4. MECCS ADATOK: {json.dumps(match_data)}
+        4. MECCS ADATOK (Teljes nyers adat): {json.dumps(match_data)}
+        5. H2H ADATOK (h2h_data): {json.dumps(h2h_data)}
+        6. TABELLA (standings_data): {json.dumps(standings_data)}
+        7. SÉRÜLTEK (injuries_data): {json.dumps(injuries_data)}
+        8. HAZAI CSAPAT STATOK (home_stats): {json.dumps(home_stats)}
+        9. VENDÉG CSAPAT STATOK (away_stats): {json.dumps(away_stats)}
+        10. SPECIFIKUS ÁTLAGOK (computed_stats): {json.dumps(computed_stats)}
         
         FELADAT:
         Ne csak 1X2-ben gondolkodj! Értékeld ki a BTTS (Mindkét csapat lő gólt) és az Over/Under 2.5 piacokat is!
