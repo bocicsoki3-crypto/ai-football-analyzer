@@ -419,40 +419,39 @@ with tab1:
             # Extract Tips using Regex
             boss_text = results['boss']
             score_match = re.search(r'\*\*PONTOS VÉGEREDMÉNY TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
+            main_match = re.search(r'\*\*FŐ TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
             value_match = re.search(r'\*\*VALUE TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
             
             score_tip = score_match.group(1).strip() if score_match else "Nincs adat"
+            main_tip = main_match.group(1).strip() if main_match else "Nincs adat"
             value_tip = value_match.group(1).strip() if value_match else "Nincs adat"
             
             # Display Big Metrics
             st.markdown("<h2 style='text-align: center;'>🏆 A Bizottság Döntése</h2>", unsafe_allow_html=True)
             
-            # Check if value tip is meaningful
-            has_value = True
-            if not value_tip or "Nincs Value" in value_tip or "Nincs adat" in value_tip or "Nincs érték" in value_tip:
-                 has_value = False
+            m_col1, m_col2, m_col3 = st.columns(3)
+            
+            with m_col1:
+                st.markdown(f"""
+                <div style="background: rgba(0, 210, 255, 0.1); padding: 15px; border-radius: 15px; border: 1px solid rgba(0, 210, 255, 0.3); text-align: center; height: 100%;">
+                    <h4 style="margin:0; color: #00d2ff;">PONTOS EREDMÉNY</h4>
+                    <h2 style="margin:10px 0;">{score_tip}</h2>
+                </div>
+                """, unsafe_allow_html=True)
 
-            if has_value:
-                m_col1, m_col2 = st.columns(2)
-                with m_col1:
-                    st.markdown(f"""
-                    <div style="background: rgba(0, 210, 255, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 210, 255, 0.3); text-align: center;">
-                        <h3 style="margin:0; color: #00d2ff;">PONTOS EREDMÉNY</h3>
-                        <h1 style="margin:10px 0; font-size: 3rem;">{score_tip}</h1>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with m_col2:
-                    st.markdown(f"""
-                    <div style="background: rgba(255, 0, 100, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(255, 0, 100, 0.3); text-align: center;">
-                        <h3 style="margin:0; color: #ff0064;">VALUE TIPP</h3>
-                        <h2 style="margin:15px 0; font-size: 1.8rem;">{value_tip}</h2>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                 st.markdown(f"""
-                <div style="background: rgba(0, 210, 255, 0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(0, 210, 255, 0.3); text-align: center; max-width: 600px; margin: 0 auto;">
-                    <h3 style="margin:0; color: #00d2ff;">PONTOS EREDMÉNY</h3>
-                    <h1 style="margin:10px 0; font-size: 3rem;">{score_tip}</h1>
+            with m_col2:
+                st.markdown(f"""
+                <div style="background: rgba(255, 215, 0, 0.1); padding: 15px; border-radius: 15px; border: 1px solid rgba(255, 215, 0, 0.3); text-align: center; height: 100%;">
+                    <h4 style="margin:0; color: #FFD700;">FŐ TIPP (BIZTONSÁGI)</h4>
+                    <h2 style="margin:10px 0;">{main_tip}</h2>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with m_col3:
+                st.markdown(f"""
+                <div style="background: rgba(255, 0, 100, 0.1); padding: 15px; border-radius: 15px; border: 1px solid rgba(255, 0, 100, 0.3); text-align: center; height: 100%;">
+                    <h4 style="margin:0; color: #ff0064;">VALUE TIPP</h4>
+                    <h2 style="margin:10px 0;">{value_tip}</h2>
                 </div>
                 """, unsafe_allow_html=True)
             
@@ -608,38 +607,141 @@ with tab1:
 
 
 with tab3:
-    st.header("Archívum és Tanulságok")
+    st.header("📚 Archívum és Tanulságok")
     
     predictions = db_manager.get_all_predictions()
     if predictions:
         df = pd.DataFrame(predictions)
-        st.dataframe(df[['date', 'home_team', 'away_team', 'predicted_result', 'actual_result', 'is_correct', 'lesson_learned']])
         
-        st.subheader("Eredmény Frissítése & Tanulás")
-        pred_id = st.selectbox("Válassz egy korábbi tippet frissítéshez (ID):", df['id'].tolist())
-        
-        if pred_id:
-            row = df[df['id'] == pred_id].iloc[0]
-            st.write(f"Meccs: {row['home_team']} vs {row['away_team']}")
-            st.write(f"Tipp: {row['predicted_result']}")
+        # --- Custom Table Header ---
+        h1, h2, h3, h4, h5, h6, h7 = st.columns([0.5, 1.5, 3, 2, 1, 1, 1])
+        h1.markdown("**ID**")
+        h2.markdown("**Dátum**")
+        h3.markdown("**Meccs**")
+        h4.markdown("**Tipp**")
+        h5.markdown("**Eredmény**")
+        h6.markdown("**Status**")
+        h7.markdown("**Nézet**")
+        st.markdown("---")
+
+        for index, row in df.iterrows():
+            c1, c2, c3, c4, c5, c6, c7 = st.columns([0.5, 1.5, 3, 2, 1, 1, 1])
             
-            col1, col2 = st.columns(2)
-            with col1:
-                new_result = st.text_input("Tényleges végeredmény:", value=row['actual_result'] if row['actual_result'] else "")
-                is_correct = st.checkbox("Helyes volt a tipp?", value=bool(row['is_correct']))
-                lesson = st.text_area("Tanulság (ha tévedett a rendszer):", value=row['lesson_learned'] if row['lesson_learned'] else "")
+            # ID
+            c1.write(f"#{row['id']}")
+            
+            # Date
+            c2.write(row['date'])
+            
+            # Match
+            c3.write(f"{row['home_team']} - {row['away_team']}")
+            
+            # Tip Extraction (Simplified for display)
+            tip_text = "Megnyitás..."
+            if row['predicted_result']:
+                # Try to extract score like in tab2
+                score_match = re.search(r'\*\*PONTOS VÉGEREDMÉNY TIPP\*\*:\s*(.*)', str(row['predicted_result']), re.IGNORECASE)
+                if score_match:
+                    tip_text = score_match.group(1).strip()
+                else:
+                    # Fallback: first 20 chars
+                    tip_text = str(row['predicted_result'])[:20] + "..."
+            
+            c4.write(tip_text)
+            
+            # Actual Result
+            c5.write(row['actual_result'] if row['actual_result'] else "-")
+            
+            # Status (Color coded)
+            is_correct = row['is_correct']
+            if is_correct == 1:
+                status_html = "<span style='color:#00FF00; font-weight:bold;'>✅ NYERT</span>"
+            elif is_correct == 0:
+                status_html = "<span style='color:#FF0000; font-weight:bold;'>❌ VESZTETT</span>"
+            else:
+                status_html = "<span style='color:grey;'>❓ FÜGGŐBEN</span>"
+            c6.markdown(status_html, unsafe_allow_html=True)
+            
+            # Magnifying Glass Button
+            if c7.button("🔍", key=f"btn_arch_{row['id']}"):
+                st.session_state['selected_archive_id'] = row['id']
+                st.rerun()
+            
+            st.markdown("<hr style='margin: 5px 0; opacity: 0.2;'>", unsafe_allow_html=True)
+
+        # --- Detailed View Section ---
+        if 'selected_archive_id' in st.session_state:
+            sel_id = st.session_state['selected_archive_id']
+            # Find the row in current dataframe
+            selected_row = df[df['id'] == sel_id]
+            
+            if not selected_row.empty:
+                row = selected_row.iloc[0]
                 
-                if st.button("💾 Frissítés és Tanulás", type="primary"):
-                    db_manager.update_result(pred_id, new_result, is_correct, lesson)
-                    st.success("Adatbázis frissítve! A rendszer tanulni fog ebből.")
+                st.markdown("---")
+                st.subheader(f"🔍 Elemzés Részletei (ID: {sel_id})")
+                
+                # Auto-expand the details
+                with st.expander(f"📄 {row['home_team']} vs {row['away_team']} - Részletes Jegyzőkönyv", expanded=True):
+                    
+                    # 1. Parse full analysis JSON
+                    full_analysis = {}
+                    try:
+                        if row['full_analysis']:
+                            full_analysis = json.loads(row['full_analysis'])
+                    except Exception as e:
+                        st.error(f"Hiba a JSON betöltésekor: {e}")
+                    
+                    # 2. Display Tabs
+                    at1, at2, at3, at4 = st.tabs(["📊 Statisztikus", "🕵️ Hírszerző", "🧠 Taktikus & Próféta", "👔 Főnök"])
+                    
+                    with at1:
+                        st.markdown(full_analysis.get('statistician', 'Nincs adat'))
+                    with at2:
+                        st.markdown(full_analysis.get('scout', 'Nincs adat'))
+                    with at3:
+                        st.markdown("### Taktikus")
+                        st.markdown(full_analysis.get('tactician', 'Nincs adat'))
+                        st.markdown("---")
+                        st.markdown("### Próféta")
+                        st.markdown(full_analysis.get('prophet', 'Nincs adat'))
+                    with at4:
+                        st.markdown(full_analysis.get('boss', 'Nincs adat'))
+
+                # 3. Edit/Update Section
+                st.markdown("### ✍️ Eredmény Adminisztráció")
+                
+                # Use a form to avoid instant rerun issues during editing
+                with st.form(key=f"edit_form_{sel_id}"):
+                    c_edit1, c_edit2 = st.columns(2)
+                    with c_edit1:
+                        new_res = st.text_input("Végeredmény:", value=row['actual_result'] if row['actual_result'] else "")
+                        is_corr = st.checkbox("Helyes volt a tipp?", value=bool(row['is_correct']))
+                        less = st.text_area("Tanulság (ha tévedett):", value=row['lesson_learned'] if row['lesson_learned'] else "")
+                    
+                    with c_edit2:
+                        st.info("Itt tudod utólag rögzíteni az eredményt, hogy az AI tanulhasson belőle.")
+                    
+                    col_save, col_del = st.columns([1, 1])
+                    with col_save:
+                        submit_save = st.form_submit_button("💾 Mentés és Tanulás")
+                    with col_del:
+                        # Delete is risky, maybe keep it outside form or use a separate button?
+                        # Inside form is fine, but needs logic check.
+                        pass
+                
+                if submit_save:
+                    db_manager.update_result(int(sel_id), new_res, is_corr, less)
+                    st.success("Sikeresen frissítve!")
                     st.rerun()
-            
-            with col2:
-                st.write("---")
-                st.warning("⚠️ Veszélyes Zóna")
-                if st.button("🗑️ Tipp Törlése Véglegesen", type="secondary"):
-                    db_manager.delete_prediction(pred_id)
-                    st.success("Tipp sikeresen törölve!")
-                    st.rerun()
+
+                # Separate Delete Button (Safety)
+                st.markdown("---")
+                if st.button("🗑️ Bejegyzés Törlése", key=f"del_{sel_id}", type="primary"):
+                     db_manager.delete_prediction(int(sel_id))
+                     del st.session_state['selected_archive_id']
+                     st.warning("Törölve.")
+                     st.rerun()
+
     else:
-        st.info("Még nincs mentett elemzés.")
+        st.info("Még nincs mentett elemzés az adatbázisban.")

@@ -232,25 +232,29 @@ class AICommittee:
         4. MECCS ADATOK: {json.dumps(match_data)}
         
         FELADAT:
-        Hozz megkérdőjelezhetetlen döntést és keress "VALUE"-t (Értéket).
+        Ne csak 1X2-ben gondolkodj! Értékeld ki a BTTS (Mindkét csapat lő gólt) és az Over/Under 2.5 piacokat is!
         
-        VALUE SZÁMÍTÁS (KÖTELEZŐ):
-        - Vesd össze a saját valószínűségszámításodat (vagy a Statisztikusét) a Hírszerző által talált (vagy becsült) piaci oddsokkal.
-        - Csak akkor ajánlj 'Value Tippet', ha az általad számolt esély legalább 5-10%-kal magasabb, mint amit az odds sugall.
-        - Képlet: (Saját % / 100) > (1 / Odds) + 0.05
-        - Ha nem találsz oddsot, becsüld meg, mennyi lenne a reális, és írd oda, hogy "becsült odds alapján".
+        LÉPÉSEK:
+        1. Határozd meg a saját belső valószínűségedet (%) mindhárom fő piacra:
+           - 1X2 (Hazai / Döntetlen / Vendég)
+           - BTTS (Igen / Nem)
+           - Over/Under 2.5 (Alatta / Felette)
+        2. Vesd össze a Hírszerző által talált (vagy általad becsült) piaci oddsokkal.
+        3. Válassz FŐ TIPPET és VALUE TIPPET.
         
-        DÖNTÉSI STRATÉGIA:
-        - Ha a Statisztikus HAZAIT mond, de a Hírszerző szerint a fél csapat sérült -> Fogadj ELLENE vagy hagyd ki!
-        - Légy szigorú! Csak akkor adj tippet, ha 70% feletti a biztonság.
+        TIPP KATEGÓRIÁK:
+        - FŐ TIPP: Az a kimenetel, aminek a legmagasabb a bekövetkezési valószínűsége (pl. "Over 2.5" ha 75%-ra teszed). Ez a "Biztonsági Tipp".
+        - VALUE TIPP: Az a piac, ahol a te valószínűséged szignifikánsan (min. 5-10%) magasabb, mint amit az odds sugall. (Képlet: Te% > (1/Odds) + 0.05). Ha nincs ilyen, írd: "Nincs kiemelkedő value".
         
         KIMENETI FORMÁTUM (Szigorúan ezt kövesd):
         
-        **RÖVID ELEMZÉS**: [3-4 mondat. Indokold meg, miért döntöttél így, és említsd meg, hogyan használtad fel a korábbi tanulságokat!]
+        **RÖVID ELEMZÉS**: [3-4 mondat. Indokold meg a választást a számok és a hírek alapján!]
         
-        **PONTOS VÉGEREDMÉNY TIPP**: [CSAK A SZÁM! pl. 2-1. Reális eredmény legyen!]
+        **PONTOS VÉGEREDMÉNY TIPP**: [CSAK A SZÁM! pl. 2-1]
         
-        **VALUE TIPP**: [CSAK A TIPP TÖMÖREN! pl. "Hazai győzelem @ 2.10 (Value: 8%)". Ha nincs value, írd: "Nincs Value".]
+        **FŐ TIPP**: [Piac és Kimenetel] (Esély: XX%)
+        
+        **VALUE TIPP**: [Piac és Kimenetel] @ [Odds] (Value: XX%) [VAGY "Nincs kiemelkedő value"]
         """
         
         self.last_prompts['boss'] = prompt
