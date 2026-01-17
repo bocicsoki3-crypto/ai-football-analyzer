@@ -29,7 +29,8 @@ class AICommittee:
         # Initialize Gemini
         if not self.gemini_model and os.environ.get("GOOGLE_API_KEY"):
             genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+            # A list_models() alapjan a legstabilabb elerheto verzio:
+            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash')
 
     def _generate_with_retry(self, prompt):
         """
@@ -171,7 +172,7 @@ class AICommittee:
             return f"API Key hiányzik (Google vagy Groq). (Tavily infó: {len(sources_used)} forrás)"
             
         prompt = f"""
-        TE VAGY A HÍRSZERZŐ (Gemini 1.5 Flash). Egy oknyomozó sportújságíró.
+        TE VAGY A HÍRSZERZŐ (Gemini 2.0 Flash). Egy oknyomozó sportújságíró.
         
         Meccs: {home_team} vs {away_team}
         Bíró (adatbázisból): {referee if referee else "Ismeretlen"}
@@ -262,7 +263,7 @@ class AICommittee:
         computed_stats = match_data.get('computed_stats', {})
 
         prompt = f"""
-        TE VAGY A FŐNÖK (Gemini 1.5 Flash). A "Keresztapa" a sportfogadásban.
+        TE VAGY A FŐNÖK (Gemini 2.0 Flash). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
         {lessons_text}
