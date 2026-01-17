@@ -26,3 +26,6 @@ venv.bak/
 # IDE
 .vscode/
 .idea/
+
+# Temporary files
+.tmp.driveupload/
