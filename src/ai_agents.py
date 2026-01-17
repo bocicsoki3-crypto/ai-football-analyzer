@@ -237,153 +237,124 @@ class AICommittee:
             return f"Hiba a Taktikusnál: {str(e)}"
 
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
-        print("DEBUG: BOSS AGENT STARTED (v3.0 - No f-string)")
+        """ 
+        Boss Agent: GRANDMASTER SZINTŰ ELEMZŐ + ODDS KALKULÁTOR. 
+        Figyelembe veszi: Matek + Pszichológia + Bíró + Időjárás + Value Betting. 
+        """ 
+        print("--- BOSS AGENT: GRANDMASTER ANALYSIS & ODDS START ---")
         self._setup_clients()
         
-        # Enforce Groq Only
         if not self.groq_client:
-            return "CRITICAL ERROR: Groq API Key is missing. Boss Agent requires Groq."
+            return {
+                "analysis": "CRITICAL ERROR: Groq API Key is missing.",
+                "score_prediction": "N/A",
+                "main_tip": "Error",
+                "value_tip": "Error"
+            }
 
-        # Truncate Scout Report (User Request: >20k chars)
-        if len(scout_report) > 20000:
-            scout_report = scout_report[:20000] + "\n[...TRUNCATED DUE TO LENGTH...]"
-
-        lessons_text = ""
-        if lessons:
-            lessons_text = "\n".join(lessons)
+        system_prompt = """ 
+        YOU ARE A GRANDMASTER FOOTBALL HANDICAPPER. YOUR GOAL IS PROFIT. 
+        
+        PERFORM A 5-DIMENSIONAL ANALYSIS TO FIND THE "TRUTH" AND THE "VALUE": 
+        
+        DIMENSION 1: PSYCHOLOGY & MOTIVATION (News/Scout Report) 
+        - IS THERE PRESSURE? (Title race, Relegation). 
+        - MORALE: Internal conflict? Coach sacked? 
+        - REFEREE: Check Ref stats in report. High card avg (>4.5)? -> High Volatility. 
+        - WEATHER: Extreme conditions? -> Favors Under/Draw. 
+        
+        DIMENSION 2: SQUAD & TACTICS (Tactician Report) 
+        - INJURIES: If Key Scorer/Defender missing -> DEDUCT 15-20% from win chance. 
+        - FATIGUE: Did they play 3 days ago? -> Fade them (Bet Against). 
+        
+        DIMENSION 3: THE MATH (Stat Report) 
+        - Check xG, Form, and Goals Averages. 
+        - Do Stats confirm Psychology? -> STRONG BET. 
+        - Do Stats contradict Psychology? -> SKIP or CAUTIOUS BET. 
+        
+        DIMENSION 4: ODDS & VALUE (CRITICAL!) 
+        - Look for Odds in the input text. If found, compare with your probability. 
+        - IF NO ODDS FOUND: CALCULATE "FAIR ODDS" = 1 / (Your Probability %). 
+        - Example: If you think Home Win is 50%, Fair Odds = 2.00. 
+        - VALUE TIP RULE: Only suggest a Value Tip if your calculated probability is significantly higher than implied odds. 
+        
+        DIMENSION 5: THE DECISION 
+        - Combine all factors. Psychology overrides Stats. Value overrides "Sure Bets". 
+        
+        OUTPUT FORMAT (JSON ONLY, NO MARKDOWN): 
+        { 
+            "analysis": "Detailed Grandmaster analysis. Mention Ref, Weather, and why the Odds are good/bad.", 
+            "score_prediction": "e.g. 2-1", 
+            "main_tip": "The safest bet (High Win Rate)", 
+            "main_tip_confidence": "e.g. 75%", 
+            "value_tip": "The bet with best Profit Potential (e.g. BTTS or Away Win)", 
+            "value_tip_odds": "Estimate the Fair Odds (e.g. 2.10) or use real odds if found", 
+            "btts_percent": "e.g. 60%", 
+            "over_2_5_percent": "e.g. 55%" 
+        } 
+        """ 
+    
+        try: 
+            # SAFE PROMPT CONSTRUCTION (No f-strings)
+            user_prompt_template = """ 
+            ANALYZE THE FULL CONTEXT FOR PROFIT: 
             
-        h2h_data = match_data.get('h2h', [])
-        standings_data = match_data.get('standings', [])
-        injuries_data = match_data.get('injuries', [])
-        home_stats = match_data.get('home_team', {})
-        away_stats = match_data.get('away_team', {})
-        computed_stats = match_data.get('computed_stats', {})
-
-        context_data_summary = f"Scout Length: {len(scout_report)}, H2H Count: {len(h2h_data)}, Standings: {len(standings_data)}"
-
-        # TEMPLATE DEFINITION (No f-string!)
-        prompt_template = """
-        TE VAGY A FŐNÖK (Groq Llama 3.3). A "Keresztapa" a sportfogadásban.
-        
-        KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
-        __LESSONS__
-        
-        UTASÍTÁS:
-        1. A Hírszerzőtől (Scout) most NYERS TAVILY ADATOKAT kapsz. Ezt neked kell feldolgoznod és kiszűrnöd belőle a releváns infót (sérülések, hírek).
-        2. KÖTELEZŐEN ellenőrizd a tényeket a statisztikák alapján!
-        3. A "BÍRÓ" szekciót keresd a nyers szövegben vagy használd a statisztikát.
-        4. KÖTELEZŐEN vedd figyelembe a h2h_data változó tartalmát is a döntésnél!
-        5. KÖTELEZŐEN vizsgáld meg a TABELLA (standings) helyezéseket és a motivációt!
-        6. KÖTELEZŐEN nézd át a SÉRÜLTEK (injuries) listáját és súlyozd a hiányzók fontosságát!
-        7. KÖTELEZŐEN elemezd a CSAPAT STATISZTIKÁKAT (home/away_stats) és a SPECIFIKUS ÁTLAGOKAT (computed_stats)!
-        
-        SZIGORÚ KONSZISZTENCIA PROTOKOLL (NE HIBÁZZ!):
-        - A STATISZTIKUS (Statistician) adatai a "Szentírás". Ő a matematikus.
-        - HA a Statisztikus azt mondja, hogy az "Over 2.5" esélye ALACSONY (pl. 44.1%), akkor TE NEM VÁLASZTHATOD AZT FŐ TIPPNEK 60%-kal! Ez matematikai lehetetlenség, kivéve ha valami drasztikus hír (pl. mindkét kapus lesérült) felülírja.
-        - Ha a Statisztikus szerint az Under az esélyesebb, akkor a te Fő tipped is legyen Under (vagy BTTS No), de semmiképp ne mondj ellent a számoknak indoklás nélkül!
-        - A "FŐ TIPP" (Main Tip) mindig a matematikalag legvalószínűbb kimenetel legyen. Ne hallucinálj magasabb százalékot csak azért, hogy "biztosnak" tűnjön!
-        
-        BEMENETEK:
-        1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): __STATISTICIAN__
-        2. HÍRSZERZŐ JELENTÉSE (NYERS TAVILY ADAT - SZŰRD KI A LÉNYEGET!): __SCOUT__
-        3. TAKTIKUS JELENTÉSE (Játék képe): __TACTICIAN__
-        4. MECCS ADATOK (Teljes nyers adat): __MATCH_DATA__
-        5. H2H ADATOK (h2h_data): __H2H__
-        6. TABELLA (standings_data): __STANDINGS__
-        7. SÉRÜLTEK (injuries_data): __INJURIES__
-        8. HAZAI CSAPAT STATOK (home_stats): __HOME_STATS__
-        9. VENDÉG CSAPAT STATOK (away_stats): __AWAY_STATS__
-        10. SPECIFIKUS ÁTLAGOK (computed_stats): __COMPUTED_STATS__
-
-        FELADAT:
-        Ne csak 1X2-ben gondolkodj! Értékeld ki a BTTS (Mindkét csapat lő gólt) és az Over/Under 2.5 piacokat is!
-        
-        LÉPÉSEK:
-        1. Nézd meg a Statisztikus számait. Ez az alap.
-        2. Korrigáld a Hírszerző hírei alapján (pl. kulcsjátékos hiánya -> kevesebb gól vagy gyengébb védelem).
-        3. Válassz FŐ TIPPET és VALUE TIPPET.
-        
-        TIPP KATEGÓRIÁK:
-        - FŐ TIPP: A LEGMAGASABB valószínűségű kimenetel. Ha a Statisztikus szerint Over 2.5 = 44%, akkor az Under 2.5 = 56%. Tehát a Fő Tippnek Undernek kell lennie! Ne erőltesd az Overt!
-        - VALUE TIPP: Ahol a te becsült esélyed > Implied Odds + 5-10%.
-        
-        KIMENETI FORMÁTUM (JSON ONLY):
-        RETURN ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION.
-        {
-            "analysis": "Rövid, 3-4 mondatos indoklás. Ha eltérsz a matektól, írd le miért!",
-            "prediction": "PONTOS VÉGEREDMÉNY TIPP (pl. 2-1)",
-            "main_tip": "FŐ TIPP (Piac és Kimenetel) (Esély: XX%)",
-            "value_tip": "VALUE TIPP (Piac és Kimenetel) @ [Odds] (Value: XX%)"
-        }
-        """
-        
-        # Safe Injection
-        prompt = prompt_template.replace("__LESSONS__", lessons_text)
-        prompt = prompt.replace("__STATISTICIAN__", statistician_report)
-        prompt = prompt.replace("__SCOUT__", scout_report)
-        prompt = prompt.replace("__TACTICIAN__", tactician_report)
-        prompt = prompt.replace("__MATCH_DATA__", json.dumps(match_data))
-        prompt = prompt.replace("__H2H__", json.dumps(h2h_data))
-        prompt = prompt.replace("__STANDINGS__", json.dumps(standings_data))
-        prompt = prompt.replace("__INJURIES__", json.dumps(injuries_data))
-        prompt = prompt.replace("__HOME_STATS__", json.dumps(home_stats))
-        prompt = prompt.replace("__AWAY_STATS__", json.dumps(away_stats))
-        prompt = prompt.replace("__COMPUTED_STATS__", json.dumps(computed_stats))
-        
-        self.last_prompts['boss'] = prompt
-        
-        try:
-            print(f"DEBUG - Főnök Bemenete: {context_data_summary}")
+            [1. PSYCHOLOGY, ODDS, NEWS] 
+            __SCOUT_REPORT__ 
             
-            # Priority 1: Groq (Llama 3.3 70b) - KIZÁRÓLAGOSAN
-            completion = self.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=2000
-            )
-            content = completion.choices[0].message.content
-            print(f"DEBUG - NYERS FŐNÖK VÁLASZ:\n{content}") # Hogy lássuk a konzolon
+            [2. TACTICS & LINEUPS] 
+            __TACTICIAN_REPORT__ 
             
-            # JSON Repair / Extraction Logic
-            try:
-                # 1. LÉPÉS: Keressük meg az első '{' és az utolsó '}' karaktert (Regex)
-                # Ez kidobja a "Here is the json" szöveget az elejéről és a végétől
-                json_match = re.search(r'{.*}', content, re.DOTALL)
-                
-                if json_match:
-                    clean_json = json_match.group(0)
-                    boss_data = json.loads(clean_json) # Ez már tiszta JSON lesz!
-                else:
-                    raise ValueError("Nem található JSON blokk a válaszban.")
+            [3. STATISTICS & FORM] 
+            __STAT_REPORT__ 
             
-            except Exception as e:
-                print(f"JSON PARSING HIBA: {str(e)}")
-                # 2. LÉPÉS: Ha mégis hiba van, NE OMOLJON ÖSSZE A PROGRAM!
-                # Adjon vissza egy vészhelyzeti alapértelmezett adatot:
-                boss_data = {
-                    "analysis": f"Technikai hiba a feldolgozásban. Nyers válasz: {content[:100]}...",
-                    "main_tip": "Nincs adat",
-                    "prediction": "?-?",
-                    "value_tip": "Nincs adat"
-                }
-
-            # Reconstruct readable format for UI
-            formatted_output = f"""
-**RÖVID ELEMZÉS**: {boss_data.get('analysis', 'N/A')}
-
-**PONTOS VÉGEREDMÉNY TIPP**: {boss_data.get('prediction', boss_data.get('score_prediction', 'N/A'))}
-
-**FŐ TIPP**: {boss_data.get('main_tip', 'N/A')}
-
-**VALUE TIPP**: {boss_data.get('value_tip', 'N/A')}
-"""
-            return formatted_output
-                
-        except Exception as e:
-            error_message = f"CRITICAL ERROR:\nType: {type(e).__name__}\nMessage: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
-            print(error_message) # Konzolra
-            return error_message # UI-ra is ezt küldd vissza!
+            [4. MATCH DETAILS] 
+            __MATCH_DATA__ 
+            
+            FIND THE VALUE. CALCULATE FAIR ODDS IF MISSING. RETURN JSON ONLY. 
+            """ 
+            
+            user_prompt = user_prompt_template.replace("__SCOUT_REPORT__", str(scout_report))
+            user_prompt = user_prompt.replace("__TACTICIAN_REPORT__", str(tactician_report))
+            user_prompt = user_prompt.replace("__STAT_REPORT__", str(statistician_report))
+            user_prompt = user_prompt.replace("__MATCH_DATA__", str(match_data))
+            
+            self.last_prompts['boss'] = user_prompt
+    
+            completion = self.groq_client.chat.completions.create( 
+                model="llama-3.3-70b-versatile", 
+                messages=[ 
+                    {"role": "system", "content": system_prompt}, 
+                    {"role": "user", "content": user_prompt} 
+                ], 
+                temperature=0.25, 
+                max_tokens=1500 
+            ) 
+    
+            # --- JSON TISZTÍTÁS (Hogy ne omoljon össze) --- 
+            raw_content = completion.choices[0].message.content 
+            print(f"DEBUG AI RESPONSE: {raw_content}") 
+            
+            match = re.search(r'\{[\s\S]*\}', raw_content) 
+            if match: 
+                return json.loads(match.group(0)) 
+            else: 
+                raise ValueError("Nem található JSON válasz.") 
+    
+        except Exception as e: 
+            # VÉSZHELYZETI MENTŐÖV (Hogy mindig legyen eredmény a képernyőn) 
+            print(f"AI ERROR: {e}") 
+            print(traceback.format_exc())
+            return { 
+                "analysis": f"⚠️ TECHNIKAI HIBA (AI): {str(e)}. A rendszer a statisztikák alapján generált becslést mutat.", 
+                "score_prediction": "1-1 (Stat)", 
+                "main_tip": "Statisztikai Hazai/X", 
+                "main_tip_confidence": "N/A", 
+                "value_tip": "Nincs AI Value", 
+                "value_tip_odds": "0.00", 
+                "btts_percent": "50%", 
+                "over_2_5_percent": "50%" 
+            }
 
     def run_prophet(self, match_data, home_team, away_team):
         # Use Groq (llama-3.3-70b-versatile)
