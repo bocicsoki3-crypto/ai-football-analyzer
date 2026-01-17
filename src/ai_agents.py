@@ -4,6 +4,7 @@ import json
 import ollama
 from tavily import TavilyClient
 from mistralai import Mistral
+import google.generativeai as genai
 from datetime import datetime
 
 class AICommittee:
@@ -11,6 +12,7 @@ class AICommittee:
         self.groq_client = None
         self.tavily_client = None
         self.mistral_client = None
+        self.gemini_model = None
         self.last_prompts = {}
     
     def _setup_clients(self):
@@ -23,6 +25,10 @@ class AICommittee:
         # Initialize Mistral
         if not self.mistral_client and os.environ.get("MISTRAL_API_KEY"):
             self.mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
+        # Initialize Gemini
+        if not self.gemini_model and os.environ.get("GOOGLE_API_KEY"):
+            genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
     def get_last_prompts(self):
         return self.last_prompts
@@ -142,11 +148,11 @@ class AICommittee:
             except Exception as e:
                 search_context = f"Hiba a Tavily keresésnél: {str(e)}"
 
-        if not self.groq_client:
-            return f"Groq API Key hiányzik. (Tavily infó: {len(sources_used)} forrás)"
+        if not self.gemini_model and not self.groq_client:
+            return f"API Key hiányzik (Google vagy Groq). (Tavily infó: {len(sources_used)} forrás)"
             
         prompt = f"""
-        TE VAGY A HÍRSZERZŐ (Groq - Llama 3.3 70B). Egy oknyomozó sportújságíró.
+        TE VAGY A HÍRSZERZŐ (Gemini 2.0 Flash). Egy oknyomozó sportújságíró.
         
         Meccs: {home_team} vs {away_team}
         Bíró (adatbázisból): {referee if referee else "Ismeretlen"}
@@ -172,12 +178,19 @@ class AICommittee:
         self.last_prompts['scout'] = prompt
         
         try:
-            completion = self.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
-            )
-            return completion.choices[0].message.content
+            # Priority: Gemini 2.0 Flash
+            if self.gemini_model:
+                response = self.gemini_model.generate_content(prompt)
+                return response.text
+                
+            # Fallback: Groq
+            if self.groq_client:
+                completion = self.groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7
+                )
+                return completion.choices[0].message.content
         except Exception as e:
             return f"Hiba a Hírszerzőnél: {str(e)}"
 
@@ -216,8 +229,8 @@ class AICommittee:
         self._setup_clients()
         
         # Check if we have at least one capable client
-        if not self.mistral_client and not self.groq_client:
-            return "Hiányzó API kulcsok (MISTRAL_API_KEY vagy GROQ_API_KEY)."
+        if not self.gemini_model and not self.mistral_client and not self.groq_client:
+            return "Hiányzó API kulcsok (GOOGLE_API_KEY, MISTRAL_API_KEY vagy GROQ_API_KEY)."
             
         lessons_text = ""
         if lessons:
@@ -231,7 +244,7 @@ class AICommittee:
         computed_stats = match_data.get('computed_stats', {})
 
         prompt = f"""
-        TE VAGY A FŐNÖK (Mistral / Mixtral). A "Keresztapa" a sportfogadásban.
+        TE VAGY A FŐNÖK (Gemini 2.0 Flash). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
         {lessons_text}
@@ -289,8 +302,13 @@ class AICommittee:
         self.last_prompts['boss'] = prompt
         
         try:
-            # Priority: Mistral Large 2
-            if self.mistral_client:
+            # Priority 1: Gemini 2.0 Flash
+            if self.gemini_model:
+                response = self.gemini_model.generate_content(prompt)
+                return response.text
+                
+            # Priority 2: Mistral Large 2
+            elif self.mistral_client:
                 completion = self.mistral_client.chat.complete(
                     model="mistral-large-latest",
                     messages=[{"role": "user", "content": prompt}],
