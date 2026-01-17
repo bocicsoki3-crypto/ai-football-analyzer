@@ -239,7 +239,8 @@ class AICommittee:
 
         context_data_summary = f"Scout Length: {len(scout_report)}, H2H Count: {len(h2h_data)}, Standings: {len(standings_data)}"
 
-        prompt = f"""
+        # 1. RÉSZ: BEMENETEK (F-string, mert változókat tartalmaz)
+        prompt_inputs = f"""
         TE VAGY A FŐNÖK (Groq Llama 3.3). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
@@ -265,7 +266,10 @@ class AICommittee:
         8. HAZAI CSAPAT STATOK (home_stats): {json.dumps(home_stats)}
         9. VENDÉG CSAPAT STATOK (away_stats): {json.dumps(away_stats)}
         10. SPECIFIKUS ÁTLAGOK (computed_stats): {json.dumps(computed_stats)}
-        
+        """
+
+        # 2. RÉSZ: FELADAT ÉS JSON FORMÁTUM (Sima string, hogy ne kelljen duplázni a kapcsos zárójeleket)
+        prompt_instructions = """
         FELADAT:
         Ne csak 1X2-ben gondolkodj! Értékeld ki a BTTS (Mindkét csapat lő gólt) és az Over/Under 2.5 piacokat is!
         
@@ -283,13 +287,15 @@ class AICommittee:
         
         KIMENETI FORMÁTUM (JSON ONLY):
         RETURN ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION.
-        {{
+        {
             "analysis": "Rövid, 3-4 mondatos indoklás.",
             "prediction": "PONTOS VÉGEREDMÉNY TIPP (pl. 2-1)",
             "main_tip": "FŐ TIPP (Piac és Kimenetel) (Esély: XX%)",
             "value_tip": "VALUE TIPP (Piac és Kimenetel) @ [Odds] (Value: XX%)"
-        }}
+        }
         """
+        
+        prompt = prompt_inputs + "\n" + prompt_instructions
         
         self.last_prompts['boss'] = prompt
         
