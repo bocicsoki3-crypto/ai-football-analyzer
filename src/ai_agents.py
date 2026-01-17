@@ -3,11 +3,13 @@ from groq import Groq
 import json
 import ollama
 from tavily import TavilyClient
+from mistralai import Mistral
 
 class AICommittee:
     def __init__(self):
         self.groq_client = None
         self.tavily_client = None
+        self.mistral_client = None
         self.last_prompts = {}
     
     def _setup_clients(self):
@@ -17,6 +19,9 @@ class AICommittee:
         # Initialize Tavily
         if not self.tavily_client and os.environ.get("TAVILY_API_KEY"):
             self.tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
+        # Initialize Mistral
+        if not self.mistral_client and os.environ.get("MISTRAL_API_KEY"):
+            self.mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
 
     def get_last_prompts(self):
         return self.last_prompts
@@ -210,20 +215,28 @@ class AICommittee:
 
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
         self._setup_clients()
-        if not self.groq_client:
-            return "Groq API Key hiányzik."
+        
+        # Check if we have at least one capable client
+        if not self.mistral_client and not self.groq_client:
+            return "Hiányzó API kulcsok (MISTRAL_API_KEY vagy GROQ_API_KEY)."
             
         lessons_text = ""
         if lessons:
             lessons_text = "\n".join(lessons)
             
         prompt = f"""
-        TE VAGY A FŐNÖK (Groq - Llama 3.3 70B). A "Keresztapa" a sportfogadásban.
+        TE VAGY A FŐNÖK (Mistral / Mixtral). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
         {lessons_text}
         
         UTASÍTÁS: KÖTELEZŐEN olvasd el a fenti tanulságokat! Ha egy korábbi tipp nem jött be hasonló szituációban, most dönts máshogy!
+        
+        LOGIKAI LÁNC (KÖTELEZŐ):
+        A döntésed alapja egy szintézis legyen:
+        1. VIZSGÁLD MEG a Hírszerző jelentését (Tavily által gyűjtött friss hírek: Fbref, Footystats, sérülések, motiváció).
+        2. VESD ÖSSZE ezt a Statisztikus jelentésével (Llama 3.3 által számolt matematikai valószínűségek).
+        3. Ha a hírek (pl. kulcsjátékos hiánya) ellentmondanak a mateknak, a hírek döntsenek!
         
         BEMENETEK:
         1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): {statistician_report}
@@ -260,12 +273,24 @@ class AICommittee:
         self.last_prompts['boss'] = prompt
         
         try:
-            completion = self.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
-            )
-            return completion.choices[0].message.content
+            # Priority: Mistral Large 2
+            if self.mistral_client:
+                completion = self.mistral_client.chat.complete(
+                    model="mistral-large-latest",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7
+                )
+                return completion.choices[0].message.content
+                
+            # Fallback: Groq (Mixtral 8x7b - closest to Mistral on Groq)
+            elif self.groq_client:
+                completion = self.groq_client.chat.completions.create(
+                    model="mixtral-8x7b-32768",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7
+                )
+                return completion.choices[0].message.content
+                
         except Exception as e:
             return f"Hiba a Főnöknél: {str(e)}"
 

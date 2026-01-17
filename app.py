@@ -663,7 +663,7 @@ with tab3:
             c6.markdown(status_html, unsafe_allow_html=True)
             
             # Magnifying Glass Button
-            if c7.button("🔍", key=f"btn_arch_{row['id']}"):
+            if c7.button("📄", key=f"btn_arch_{row['id']}"):
                 st.session_state['selected_archive_id'] = row['id']
                 st.rerun()
             

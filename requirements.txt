@@ -6,3 +6,4 @@ groq
 python-dotenv
 ollama
 tavily-python
+mistralai
