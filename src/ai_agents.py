@@ -283,12 +283,12 @@ class AICommittee:
         
         KIMENETI FORMÁTUM (JSON ONLY):
         RETURN ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION.
-        {
+        {{
             "analysis": "Rövid, 3-4 mondatos indoklás.",
             "prediction": "PONTOS VÉGEREDMÉNY TIPP (pl. 2-1)",
             "main_tip": "FŐ TIPP (Piac és Kimenetel) (Esély: XX%)",
             "value_tip": "VALUE TIPP (Piac és Kimenetel) @ [Odds] (Value: XX%)"
-        }
+        }}
         """
         
         self.last_prompts['boss'] = prompt
