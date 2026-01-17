@@ -304,48 +304,42 @@ class AICommittee:
                 max_tokens=2000
             )
             content = completion.choices[0].message.content
+            print(f"DEBUG - NYERS FŐNÖK VÁLASZ:\n{content}") # Hogy lássuk a konzolon
             
             # JSON Repair / Extraction Logic
             try:
-                # Regex a JSON blokk kinyerésére (figyelmen kívül hagyva a "Here is the JSON" szöveget)
+                # 1. LÉPÉS: Keressük meg az első '{' és az utolsó '}' karaktert (Regex)
+                # Ez kidobja a "Here is the json" szöveget az elejéről és a végétől
                 json_match = re.search(r'{.*}', content, re.DOTALL)
                 
                 if json_match:
-                    clean_json_string = json_match.group(0)
-                    boss_data = json.loads(clean_json_string)
-                    
-                    # Reconstruct readable format for UI
-                    formatted_output = f"""
+                    clean_json = json_match.group(0)
+                    boss_data = json.loads(clean_json) # Ez már tiszta JSON lesz!
+                else:
+                    raise ValueError("Nem található JSON blokk a válaszban.")
+            
+            except Exception as e:
+                print(f"JSON PARSING HIBA: {str(e)}")
+                # 2. LÉPÉS: Ha mégis hiba van, NE OMOLJON ÖSSZE A PROGRAM!
+                # Adjon vissza egy vészhelyzeti alapértelmezett adatot:
+                boss_data = {
+                    "analysis": f"Technikai hiba a feldolgozásban. Nyers válasz: {content[:100]}...",
+                    "main_tip": "Nincs adat",
+                    "prediction": "?-?",
+                    "value_tip": "Nincs adat"
+                }
+
+            # Reconstruct readable format for UI
+            formatted_output = f"""
 **RÖVID ELEMZÉS**: {boss_data.get('analysis', 'N/A')}
 
-**PONTOS VÉGEREDMÉNY TIPP**: {boss_data.get('prediction', 'N/A')}
+**PONTOS VÉGEREDMÉNY TIPP**: {boss_data.get('prediction', boss_data.get('score_prediction', 'N/A'))}
 
 **FŐ TIPP**: {boss_data.get('main_tip', 'N/A')}
 
 **VALUE TIPP**: {boss_data.get('value_tip', 'N/A')}
 """
-                    return formatted_output
-                else:
-                    raise ValueError("Nem található JSON objektum a válaszban.")
-            
-            except Exception as e:
-                print(f"JSON PARSING ERROR:\nRaw Response: {content}\nError: {e}")
-                # Fallback: Ha nem sikerül, adjon vissza egy üres, de érvényes objektumot, ne omoljon össze
-                boss_data = {"analysis": "Hiba a feldolgozásban", "main_tip": "Nincs adat", "score_prediction": "Nincs adat"}
-                
-                return f"""
-**RÖVID ELEMZÉS**: Hiba a feldolgozásban (JSON Parsing Error)
-
-**PONTOS VÉGEREDMÉNY TIPP**: Nincs adat
-
-**FŐ TIPP**: Nincs adat
-
-**VALUE TIPP**: Nincs adat
-
-**DEBUG INFO**:
-{str(e)}
-Raw: {content[:500]}...
-"""
+            return formatted_output
                 
         except Exception as e:
             import traceback
