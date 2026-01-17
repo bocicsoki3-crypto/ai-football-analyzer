@@ -574,12 +574,12 @@ with tab1:
                         st.error("Nem sikerült értelmezni a Statisztikus válaszát.")
                         st.code(results['statistician'])
                         
-                with st.expander("🕵️ HÍRSZERZŐ JELENTÉSE (Groq)", expanded=True):
+                with st.expander("🕵️ HÍRSZERZŐ JELENTÉSE (Tavily Nyers Adat)", expanded=True):
                     st.write(results['scout'])
             with col2:
                 with st.expander("🧠 TAKTIKUS JELENTÉSE (Groq)", expanded=True):
                     st.write(results['tactician'])
-                with st.expander("👔 A FŐNÖK DÖNTÉSE (Groq)", expanded=True):
+                with st.expander("👔 A FŐNÖK DÖNTÉSE (Gemini 2.0 Flash)", expanded=True):
                     st.markdown(results['boss'])
             
             # Save to DB

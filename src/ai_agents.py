@@ -41,6 +41,8 @@ class AICommittee:
         max_retries = 5
         wait_time = 30 # Kezdésnek 30 másodperc
 
+        last_error = None
+
         for attempt in range(max_retries):
             try:
                 # Próbáljuk meg lekérni az adatot
@@ -49,13 +51,18 @@ class AICommittee:
             except (ResourceExhausted, ServiceUnavailable) as e:
                 # Ha 429-es hibát kapunk (Túl gyorsak vagyunk)
                 print(f"⚠️ Google API Limit elérve! Várakozás {wait_time} másodpercig... (Próbálkozás: {attempt+1}/{max_retries})")
+                last_error = e
                 time.sleep(wait_time)
                 wait_time += 10 # Növeljük a várakozási időt minden hiba után
             except Exception as e:
                 print(f"Egyéb hiba történt: {e}")
+                last_error = e
                 break
         
-        return "Hiba: Nem sikerült lekérni az adatot."
+        # Ha minden próbálkozás sikertelen, adjunk vissza részletes hibát
+        import traceback
+        error_details = f"{str(last_error)}\n{traceback.format_exc()}" if last_error else "Ismeretlen hiba"
+        return f"Hiba: Nem sikerült lekérni az adatot 5 próbálkozás után sem.\n\nTechnikai részletek:\n{error_details}"
 
     def get_last_prompts(self):
         return self.last_prompts
