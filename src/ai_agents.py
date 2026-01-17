@@ -234,19 +234,18 @@ class AICommittee:
         away_stats = match_data.get('away_team', {})
         computed_stats = match_data.get('computed_stats', {})
 
+        context_data_summary = f"Scout Length: {len(scout_report)}, H2H Count: {len(h2h_data)}, Standings: {len(standings_data)}"
+
         prompt = f"""
         TE VAGY A FŐNÖK (Gemini 2.0 Flash). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
         {lessons_text}
         
-        UTASÍTÁS: KÖTELEZŐEN olvasd el a fenti tanulságokat! Ha egy korábbi tipp nem jött be hasonló szituációban, most dönts máshogy!
-        
-        LOGIKAI LÁNC (KÖTELEZŐ):
-        A döntésed alapja egy szintézis legyen:
-        1. VIZSGÁLD MEG a Hírszerző jelentését (Tavily által gyűjtött friss hírek: Fbref, Footystats, sérülések, motiváció).
-        2. VESD ÖSSZE ezt a Statisztikus jelentésével (Llama 3.3 által számolt matematikai valószínűségek).
-        3. Ha a hírek (pl. kulcsjátékos hiánya) ellentmondanak a mateknak, a hírek döntsenek!
+        UTASÍTÁS:
+        1. A Hírszerzőtől (Scout) most NYERS TAVILY ADATOKAT kapsz. Ezt neked kell feldolgoznod és kiszűrnöd belőle a releváns infót (sérülések, hírek).
+        2. KÖTELEZŐEN ellenőrizd a tényeket a statisztikák alapján!
+        3. A "BÍRÓ" szekciót keresd a nyers szövegben vagy használd a statisztikát.
         4. KÖTELEZŐEN vedd figyelembe a h2h_data változó tartalmát is a döntésnél!
         5. KÖTELEZŐEN vizsgáld meg a TABELLA (standings) helyezéseket és a motivációt!
         6. KÖTELEZŐEN nézd át a SÉRÜLTEK (injuries) listáját és súlyozd a hiányzók fontosságát!
@@ -254,7 +253,7 @@ class AICommittee:
         
         BEMENETEK:
         1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): {statistician_report}
-        2. HÍRSZERZŐ JELENTÉSE (Hírek, Motiváció, Oddsok): {scout_report}
+        2. HÍRSZERZŐ JELENTÉSE (NYERS TAVILY ADAT - SZŰRD KI A LÉNYEGET!): {scout_report}
         3. TAKTIKUS JELENTÉSE (Játék képe): {tactician_report}
         4. MECCS ADATOK (Teljes nyers adat): {json.dumps(match_data)}
         5. H2H ADATOK (h2h_data): {json.dumps(h2h_data)}
@@ -293,6 +292,7 @@ class AICommittee:
         self.last_prompts['boss'] = prompt
         
         try:
+            print(f"DEBUG - Főnök Bemenete: {context_data_summary}")
             # Priority 1: Gemini 2.0 Flash
             if self.gemini_model:
                 return self._generate_with_retry(prompt)
@@ -316,7 +316,10 @@ class AICommittee:
                 return completion.choices[0].message.content
                 
         except Exception as e:
-            return f"Hiba a Főnöknél: {str(e)}"
+            import traceback
+            error_msg = f"RÉSZLETES HIBA A FŐNÖKNÉL:\n{str(e)}\n\nHELYSZÍN:\n{traceback.format_exc()}"
+            print(f"CRITICAL ERROR IN BOSS:\n{error_msg}")
+            return error_msg
 
     def run_prophet(self, match_data, home_team, away_team):
         # Use Ollama (qwen2.5:7b)
