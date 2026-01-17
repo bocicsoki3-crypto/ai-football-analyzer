@@ -311,7 +311,7 @@ class AICommittee:
             return error_msg
 
     def run_prophet(self, match_data, home_team, away_team):
-        # Use Ollama (qwen2.5:7b)
+        # Use Groq (llama-3.3-70b-versatile)
         prompt = f"""
         TE VAGY A PRÓFÉTA (AI Agent). Jövőbelátó.
         
@@ -343,34 +343,25 @@ class AICommittee:
         self.last_prompts['prophet'] = prompt
         
         try:
-            response = ollama.chat(model='qwen2.5:7b', messages=[
-                {'role': 'user', 'content': prompt},
-            ])
-            content = response['message']['content']
-            # Extract JSON if wrapped in code blocks
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1]
-            return content.strip()
-        except Exception as e:
             self._setup_clients()
             if self.groq_client:
-                try:
-                    completion = self.groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.7
-                    )
-                    content = completion.choices[0].message.content
-                    if "```json" in content:
-                        content = content.split("```json")[1].split("```")[0]
-                    elif "```" in content:
-                        content = content.split("```")[1]
-                    return content.strip()
-                except Exception as groq_e:
-                    return f"Hiba a Prófétánál (Ollama & Groq): {str(e)} | {str(groq_e)}"
-            return f"Hiba a Prófétánál (Ollama): {str(e)}"
+                completion = self.groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7
+                )
+                content = completion.choices[0].message.content
+                if "```json" in content:
+                    content = content.split("```json")[1].split("```")[0]
+                elif "```" in content:
+                    content = content.split("```")[1]
+                return content.strip()
+            
+            return "Hiba: Nincs konfigurálva Groq kliens."
+        
+        except Exception as e:
+            print(f"Prophet Error: {str(e)}")
+            return f"Hiba a Prófétánál: {str(e)}"
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
         # 1. Step: Statistician
