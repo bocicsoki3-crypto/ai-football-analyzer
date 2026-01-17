@@ -34,21 +34,26 @@ class AICommittee:
 
     def _generate_with_retry(self, prompt):
         """
-        Executes Gemini generation with 429 (Quota Exceeded) retry logic.
-        Waits 10 seconds if a quota error occurs and tries once more.
+        Executes Gemini generation with Smart Retry logic for 429 errors.
+        Retries up to 3 times with 30s delay if Quota Exceeded.
         """
-        try:
-            return self.gemini_model.generate_content(prompt).text
-        except Exception as e:
-            if "429" in str(e) or "Quota" in str(e) or "quota" in str(e):
-                # Wait 10 seconds and retry
-                time.sleep(10)
-                try:
-                    return self.gemini_model.generate_content(prompt).text
-                except Exception as retry_e:
-                    raise retry_e
-            else:
-                raise e
+        max_retries = 3
+        retry_delay = 30
+
+        for attempt in range(max_retries + 1):
+            try:
+                return self.gemini_model.generate_content(prompt).text
+            except Exception as e:
+                error_msg = str(e)
+                if "429" in error_msg or "Quota" in error_msg or "quota" in error_msg or "Resource has been exhausted" in error_msg:
+                    if attempt < max_retries:
+                        print(f"⚠️ Túl gyors tempó! (429 Quota Exceeded). Pihenő {retry_delay} másodpercig... ({attempt + 1}/{max_retries})")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        raise e # Max retries reached
+                else:
+                    raise e # Not a quota error
 
     def get_last_prompts(self):
         return self.last_prompts
