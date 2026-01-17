@@ -216,6 +216,7 @@ class AICommittee:
             return f"Hiba a Taktikusnál: {str(e)}"
 
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
+        print("DEBUG: BOSS AGENT STARTED (v2.0 - Split Prompt Fix)")
         self._setup_clients()
         
         # Enforce Groq Only
