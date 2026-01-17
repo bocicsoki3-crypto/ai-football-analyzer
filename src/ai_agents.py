@@ -1,4 +1,5 @@
 import os
+import time
 from groq import Groq
 import json
 import ollama
@@ -28,7 +29,25 @@ class AICommittee:
         # Initialize Gemini
         if not self.gemini_model and os.environ.get("GOOGLE_API_KEY"):
             genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+
+    def _generate_with_retry(self, prompt):
+        """
+        Executes Gemini generation with 429 (Quota Exceeded) retry logic.
+        Waits 10 seconds if a quota error occurs and tries once more.
+        """
+        try:
+            return self.gemini_model.generate_content(prompt).text
+        except Exception as e:
+            if "429" in str(e) or "Quota" in str(e) or "quota" in str(e):
+                # Wait 10 seconds and retry
+                time.sleep(10)
+                try:
+                    return self.gemini_model.generate_content(prompt).text
+                except Exception as retry_e:
+                    raise retry_e
+            else:
+                raise e
 
     def get_last_prompts(self):
         return self.last_prompts
@@ -152,7 +171,7 @@ class AICommittee:
             return f"API Key hiányzik (Google vagy Groq). (Tavily infó: {len(sources_used)} forrás)"
             
         prompt = f"""
-        TE VAGY A HÍRSZERZŐ (Gemini 2.0 Flash). Egy oknyomozó sportújságíró.
+        TE VAGY A HÍRSZERZŐ (Gemini 1.5 Flash). Egy oknyomozó sportújságíró.
         
         Meccs: {home_team} vs {away_team}
         Bíró (adatbázisból): {referee if referee else "Ismeretlen"}
@@ -178,10 +197,9 @@ class AICommittee:
         self.last_prompts['scout'] = prompt
         
         try:
-            # Priority: Gemini 2.0 Flash
+            # Priority: Gemini 2.0 Flash (Now 1.5 Flash with Retry)
             if self.gemini_model:
-                response = self.gemini_model.generate_content(prompt)
-                return response.text
+                return self._generate_with_retry(prompt)
                 
             # Fallback: Groq
             if self.groq_client:
@@ -244,7 +262,7 @@ class AICommittee:
         computed_stats = match_data.get('computed_stats', {})
 
         prompt = f"""
-        TE VAGY A FŐNÖK (Gemini 2.0 Flash). A "Keresztapa" a sportfogadásban.
+        TE VAGY A FŐNÖK (Gemini 1.5 Flash). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
         {lessons_text}
@@ -302,10 +320,9 @@ class AICommittee:
         self.last_prompts['boss'] = prompt
         
         try:
-            # Priority 1: Gemini 2.0 Flash
+            # Priority 1: Gemini 2.0 Flash (Now 1.5 Flash with Retry)
             if self.gemini_model:
-                response = self.gemini_model.generate_content(prompt)
-                return response.text
+                return self._generate_with_retry(prompt)
                 
             # Priority 2: Mistral Large 2
             elif self.mistral_client:

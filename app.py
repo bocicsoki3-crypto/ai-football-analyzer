@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 import re
+import time
 from datetime import date
 from dotenv import load_dotenv
 
@@ -377,6 +378,7 @@ with tab1:
                 # Statistician
                 st.write("📈 A Statisztikus számolja az esélyeket (xG, Forma)...")
                 stat_report = ai_committee.run_statistician(match_details)
+                time.sleep(2) # Delay to avoid rate limits
                 
                 # Scout
                 st.write("🔍 A Hírszerző elemzi a hiányzókat és a bírót...")
@@ -385,14 +387,17 @@ with tab1:
                 h2h = match_details.get('h2h', [])
                 match_date = match['fixture']['date'].split('T')[0]
                 scout_report = ai_committee.run_scout(home_name, away_name, injuries, h2h, referee, venue, match_date)
+                time.sleep(2) # Delay to avoid rate limits
                 
                 # Tactician
                 st.write("♟️ A Taktikus vizsgálja a stílusokat...")
                 tactician_report = ai_committee.run_tactician(match_details)
+                time.sleep(2) # Delay to avoid rate limits
                 
                 # Prophet
                 st.write("🔮 A Próféta megírja a forgatókönyvet...")
                 prophet_report = ai_committee.run_prophet(match_details, home_name, away_name)
+                time.sleep(2) # Delay to avoid rate limits
                 
                 # Boss
                 st.write("👔 A Főnök meghozza a végső döntést...")
