@@ -163,62 +163,27 @@ class AICommittee:
                 # Kiterjesztett keresés: Angol nyelven a jobb találatokért
                 query = f"{home_team} vs {away_team} preview injuries lineup news {match_date} site:fbref.com OR site:whoscored.com"
                 
-                search_result = self.tavily_client.search(query, search_depth="advanced", max_results=7)
+                # Max results 5-re csökkentve a token limit miatt
+                search_result = self.tavily_client.search(query, search_depth="advanced", max_results=5)
                 
                 context_parts = []
                 if 'results' in search_result:
                     for res in search_result['results']:
-                        context_parts.append(f"Forrás: {res['url']}\nTartalom: {res['content']}")
+                        # Minimális szűrés: Csak a tartalom első 1000 karaktere
+                        content = res.get('content', '')[:1000]
+                        context_parts.append(f"Forrás: {res['url']}\nTartalom: {content}...")
                         sources_used.append(res['url'])
                 
                 search_context = "\n\n".join(context_parts)
             except Exception as e:
                 search_context = f"Hiba a Tavily keresésnél: {str(e)}"
 
-        if not self.gemini_model and not self.groq_client:
-            return f"API Key hiányzik (Google vagy Groq). (Tavily infó: {len(sources_used)} forrás)"
+        if not search_context:
+            return "Nincs elérhető online adat (Tavily)."
             
-        prompt = f"""
-        TE VAGY A HÍRSZERZŐ (Gemini 2.0 Flash). Egy oknyomozó sportújságíró.
-        
-        Meccs: {home_team} vs {away_team}
-        Bíró (adatbázisból): {referee if referee else "Ismeretlen"}
-        Helyszín: {venue if venue else "Ismeretlen"}
-        
-        FRISS INTERNETES KERESÉSI ADATOK (Tavily):
-        {search_context}
-        
-        FELADAT:
-        Ne csak felsorold a híreket, hanem keress specifikus ANOMÁLIÁKAT!
-        
-        KÖVETELMÉNYEK:
-        1. MOTIVÁCIÓS FAKTOR: Van-e tétje a meccsnek? Kiesés elleni harc, kupaszereplés miatti pihentetés? Írd le!
-        2. BÍRÓI STATISZTIKA: Ha találsz adatot a bíróról (sárga/piros lap átlag, büntetők), írd le!
-        3. EGYMÁS ELLENI (H2H): Ha a keresésben találtál friss H2H eredményeket (Fbref/Footystats), sorold fel a legutóbbi 3-at!
-        4. PÁLYAÁLLAPOT/IDŐJÁRÁS: Befolyásolja az időjárás (eső, hó, szél) a játékot?
-        5. ODDSOK: Ha találsz fogadási oddsokat a szövegben, jegyezd fel őket az "Érték" számításhoz!
-        6. HIÁNYZÓK HATÁSA: Konkrétan nevezd meg a kulcshianyozókat.
-        
-        Kimeneted legyen tömör, lényegretörő, mint egy titkos jelentés az edzőnek. Említsd meg a forrást.
-        """
-        
-        self.last_prompts['scout'] = prompt
-        
-        try:
-            # Priority: Gemini 2.0 Flash
-            if self.gemini_model:
-                return self._generate_with_retry(prompt)
-                
-            # Fallback: Groq
-            if self.groq_client:
-                completion = self.groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7
-                )
-                return completion.choices[0].message.content
-        except Exception as e:
-            return f"Hiba a Hírszerzőnél: {str(e)}"
+        # KÖZVETLEN VISSZATÉRÉS NYERS ADATTAL (AI feldolgozás nélkül)
+        # Így spórolunk a Gemini tokenekkel és kerüljük a 429-es hibát.
+        return f"*** TAVILY NYERS ADATOK (AI Összefoglaló Nélkül) ***\n\n{search_context}"
 
     def run_tactician(self, match_data):
         self._setup_clients()
