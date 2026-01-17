@@ -277,6 +277,12 @@ class AICommittee:
         6. KÖTELEZŐEN nézd át a SÉRÜLTEK (injuries) listáját és súlyozd a hiányzók fontosságát!
         7. KÖTELEZŐEN elemezd a CSAPAT STATISZTIKÁKAT (home/away_stats) és a SPECIFIKUS ÁTLAGOKAT (computed_stats)!
         
+        SZIGORÚ KONSZISZTENCIA PROTOKOLL (NE HIBÁZZ!):
+        - A STATISZTIKUS (Statistician) adatai a "Szentírás". Ő a matematikus.
+        - HA a Statisztikus azt mondja, hogy az "Over 2.5" esélye ALACSONY (pl. 44.1%), akkor TE NEM VÁLASZTHATOD AZT FŐ TIPPNEK 60%-kal! Ez matematikai lehetetlenség, kivéve ha valami drasztikus hír (pl. mindkét kapus lesérült) felülírja.
+        - Ha a Statisztikus szerint az Under az esélyesebb, akkor a te Fő tipped is legyen Under (vagy BTTS No), de semmiképp ne mondj ellent a számoknak indoklás nélkül!
+        - A "FŐ TIPP" (Main Tip) mindig a matematikalag legvalószínűbb kimenetel legyen. Ne hallucinálj magasabb százalékot csak azért, hogy "biztosnak" tűnjön!
+        
         BEMENETEK:
         1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): __STATISTICIAN__
         2. HÍRSZERZŐ JELENTÉSE (NYERS TAVILY ADAT - SZŰRD KI A LÉNYEGET!): __SCOUT__
@@ -293,21 +299,18 @@ class AICommittee:
         Ne csak 1X2-ben gondolkodj! Értékeld ki a BTTS (Mindkét csapat lő gólt) és az Over/Under 2.5 piacokat is!
         
         LÉPÉSEK:
-        1. Határozd meg a saját belső valószínűségedet (%) mindhárom fő piacra:
-           - 1X2 (Hazai / Döntetlen / Vendég)
-           - BTTS (Igen / Nem)
-           - Over/Under 2.5 (Alatta / Felette)
-        2. Vesd össze a Hírszerző által talált (vagy általad becsült) piaci oddsokkal.
+        1. Nézd meg a Statisztikus számait. Ez az alap.
+        2. Korrigáld a Hírszerző hírei alapján (pl. kulcsjátékos hiánya -> kevesebb gól vagy gyengébb védelem).
         3. Válassz FŐ TIPPET és VALUE TIPPET.
         
         TIPP KATEGÓRIÁK:
-        - FŐ TIPP: Az a kimenetel, aminek a legmagasabb a bekövetkezési valószínűsége (pl. "Over 2.5" ha 75%-ra teszed). Ez a "Biztonsági Tipp".
-        - VALUE TIPP: Az a piac, ahol a te valószínűséged szignifikánsan (min. 5-10%) magasabb, mint amit az odds sugall. (Képlet: Te% > (1/Odds) + 0.05). Ha nincs ilyen, írd: "Nincs kiemelkedő value".
+        - FŐ TIPP: A LEGMAGASABB valószínűségű kimenetel. Ha a Statisztikus szerint Over 2.5 = 44%, akkor az Under 2.5 = 56%. Tehát a Fő Tippnek Undernek kell lennie! Ne erőltesd az Overt!
+        - VALUE TIPP: Ahol a te becsült esélyed > Implied Odds + 5-10%.
         
         KIMENETI FORMÁTUM (JSON ONLY):
         RETURN ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION.
         {
-            "analysis": "Rövid, 3-4 mondatos indoklás.",
+            "analysis": "Rövid, 3-4 mondatos indoklás. Ha eltérsz a matektól, írd le miért!",
             "prediction": "PONTOS VÉGEREDMÉNY TIPP (pl. 2-1)",
             "main_tip": "FŐ TIPP (Piac és Kimenetel) (Esély: XX%)",
             "value_tip": "VALUE TIPP (Piac és Kimenetel) @ [Odds] (Value: XX%)"
