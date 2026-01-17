@@ -6,6 +6,7 @@ import ollama
 from tavily import TavilyClient
 from mistralai import Mistral
 import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from datetime import datetime
 
 class AICommittee:
@@ -34,26 +35,27 @@ class AICommittee:
 
     def _generate_with_retry(self, prompt):
         """
-        Executes Gemini generation with Smart Retry logic for 429 errors.
-        Retries up to 3 times with 30s delay if Quota Exceeded.
+        Executes Gemini generation with Robust Retry logic for 429 errors.
+        Retries up to 5 times with increasing delay.
         """
-        max_retries = 3
-        retry_delay = 30
+        max_retries = 5
+        wait_time = 30 # Kezdésnek 30 másodperc
 
-        for attempt in range(max_retries + 1):
+        for attempt in range(max_retries):
             try:
-                return self.gemini_model.generate_content(prompt).text
+                # Próbáljuk meg lekérni az adatot
+                response = self.gemini_model.generate_content(prompt)
+                return response.text
+            except (ResourceExhausted, ServiceUnavailable) as e:
+                # Ha 429-es hibát kapunk (Túl gyorsak vagyunk)
+                print(f"⚠️ Google API Limit elérve! Várakozás {wait_time} másodpercig... (Próbálkozás: {attempt+1}/{max_retries})")
+                time.sleep(wait_time)
+                wait_time += 10 # Növeljük a várakozási időt minden hiba után
             except Exception as e:
-                error_msg = str(e)
-                if "429" in error_msg or "Quota" in error_msg or "quota" in error_msg or "Resource has been exhausted" in error_msg:
-                    if attempt < max_retries:
-                        print(f"⚠️ Túl gyors tempó! (429 Quota Exceeded). Pihenő {retry_delay} másodpercig... ({attempt + 1}/{max_retries})")
-                        time.sleep(retry_delay)
-                        continue
-                    else:
-                        raise e # Max retries reached
-                else:
-                    raise e # Not a quota error
+                print(f"Egyéb hiba történt: {e}")
+                break
+        
+        return "Hiba: Nem sikerült lekérni az adatot."
 
     def get_last_prompts(self):
         return self.last_prompts
