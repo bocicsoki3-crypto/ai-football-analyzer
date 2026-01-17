@@ -77,7 +77,7 @@ class AICommittee:
         h_card = comp_stats.get('home_team_yellow_cards', 'Nincs adat')
         a_card = comp_stats.get('away_team_yellow_cards', 'Nincs adat')
         
-        # Use Ollama (qwen2.5:7b) or Groq
+        # Use Groq (llama-3.3-70b-versatile)
         prompt = f"""
         TE VAGY A STATISZTIKUS (AI Agent). A világ legjobb sportfogadási matematikusa.
         
@@ -125,7 +125,7 @@ class AICommittee:
         self.last_prompts['statistician'] = prompt
 
         try:
-            # Prefer Groq for better instruction following if available, otherwise Ollama
+            # Prefer Groq for better instruction following
             if self.groq_client:
                  completion = self.groq_client.chat.completions.create(
                         model="llama-3.3-70b-versatile",
@@ -140,18 +140,10 @@ class AICommittee:
                         content = content.split("```")[1]
                  return content.strip()
             
-            # Fallback to Ollama
-            response = ollama.chat(model='qwen2.5:7b', messages=[
-                {'role': 'user', 'content': prompt},
-            ])
-            content = response['message']['content']
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1]
-            return content.strip()
+            return '{"error": "Nincs Groq kliens konfigurálva."}'
 
         except Exception as e:
+            print(f"Hiba a Statisztikusnál: {str(e)}")
             return f'{{"error": "Hiba a Statisztikusnál: {str(e)}"}}'
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None, match_date=None):
@@ -244,7 +236,7 @@ class AICommittee:
         context_data_summary = f"Scout Length: {len(scout_report)}, H2H Count: {len(h2h_data)}, Standings: {len(standings_data)}"
 
         prompt = f"""
-        TE VAGY A FŐNÖK (Gemini 2.0 Flash). A "Keresztapa" a sportfogadásban.
+        TE VAGY A FŐNÖK (Groq Llama 3.3). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
         {lessons_text}
@@ -301,7 +293,7 @@ class AICommittee:
         try:
             print(f"DEBUG - Főnök Bemenete: {context_data_summary}")
             
-            # Priority 1: Groq (Llama 3.3 70b) - Visszaállítva felhasználói kérésre
+            # Priority 1: Groq (Llama 3.3 70b) - KIZÁRÓLAGOSAN
             if self.groq_client:
                 completion = self.groq_client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
@@ -309,19 +301,8 @@ class AICommittee:
                     temperature=0.7
                 )
                 return completion.choices[0].message.content
-
-            # Priority 2: Gemini 2.0 Flash
-            elif self.gemini_model:
-                return self._generate_with_retry(prompt)
-                
-            # Priority 3: Mistral Large 2
-            elif self.mistral_client:
-                completion = self.mistral_client.chat.complete(
-                    model="mistral-large-latest",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7
-                )
-                return completion.choices[0].message.content
+            
+            return "Hiba: Nincs konfigurált Groq kliens."
                 
         except Exception as e:
             import traceback
