@@ -579,7 +579,7 @@ with tab1:
             with col2:
                 with st.expander("🧠 TAKTIKUS JELENTÉSE (Groq)", expanded=True):
                     st.write(results['tactician'])
-                with st.expander("👔 A FŐNÖK DÖNTÉSE (Gemini 2.0 Flash)", expanded=True):
+                with st.expander("👔 A FŐNÖK DÖNTÉSE (Groq)", expanded=True):
                     st.markdown(results['boss'])
             
             # Save to DB

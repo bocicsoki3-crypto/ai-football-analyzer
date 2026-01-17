@@ -300,23 +300,24 @@ class AICommittee:
         
         try:
             print(f"DEBUG - Főnök Bemenete: {context_data_summary}")
-            # Priority 1: Gemini 2.0 Flash
-            if self.gemini_model:
-                return self._generate_with_retry(prompt)
-                
-            # Priority 2: Mistral Large 2
-            elif self.mistral_client:
-                completion = self.mistral_client.chat.complete(
-                    model="mistral-large-latest",
+            
+            # Priority 1: Groq (Llama 3.3 70b) - Visszaállítva felhasználói kérésre
+            if self.groq_client:
+                completion = self.groq_client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.7
                 )
                 return completion.choices[0].message.content
+
+            # Priority 2: Gemini 2.0 Flash
+            elif self.gemini_model:
+                return self._generate_with_retry(prompt)
                 
-            # Fallback: Groq (Llama 3 - Versatile)
-            elif self.groq_client:
-                completion = self.groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+            # Priority 3: Mistral Large 2
+            elif self.mistral_client:
+                completion = self.mistral_client.chat.complete(
+                    model="mistral-large-latest",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.7
                 )
