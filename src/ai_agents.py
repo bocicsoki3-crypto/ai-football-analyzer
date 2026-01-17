@@ -218,10 +218,14 @@ class AICommittee:
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
         self._setup_clients()
         
-        # Check if we have at least one capable client
-        if not self.gemini_model and not self.mistral_client and not self.groq_client:
-            return "Hiányzó API kulcsok (GOOGLE_API_KEY, MISTRAL_API_KEY vagy GROQ_API_KEY)."
-            
+        # Enforce Groq Only
+        if not self.groq_client:
+            return "CRITICAL ERROR: Groq API Key is missing. Boss Agent requires Groq."
+
+        # Truncate Scout Report (User Request: >20k chars)
+        if len(scout_report) > 20000:
+            scout_report = scout_report[:20000] + "\n[...TRUNCATED DUE TO LENGTH...]"
+
         lessons_text = ""
         if lessons:
             lessons_text = "\n".join(lessons)
@@ -277,15 +281,14 @@ class AICommittee:
         - FŐ TIPP: Az a kimenetel, aminek a legmagasabb a bekövetkezési valószínűsége (pl. "Over 2.5" ha 75%-ra teszed). Ez a "Biztonsági Tipp".
         - VALUE TIPP: Az a piac, ahol a te valószínűséged szignifikánsan (min. 5-10%) magasabb, mint amit az odds sugall. (Képlet: Te% > (1/Odds) + 0.05). Ha nincs ilyen, írd: "Nincs kiemelkedő value".
         
-        KIMENETI FORMÁTUM (Szigorúan ezt kövesd):
-        
-        **RÖVID ELEMZÉS**: [3-4 mondat. Indokold meg a választást a számok és a hírek alapján!]
-        
-        **PONTOS VÉGEREDMÉNY TIPP**: [CSAK A SZÁM! pl. 2-1]
-        
-        **FŐ TIPP**: [Piac és Kimenetel] (Esély: XX%)
-        
-        **VALUE TIPP**: [Piac és Kimenetel] @ [Odds] (Value: XX%) [VAGY "Nincs kiemelkedő value"]
+        KIMENETI FORMÁTUM (JSON ONLY):
+        RETURN ONLY VALID JSON. NO MARKDOWN. NO EXPLANATION.
+        {
+            "analysis": "Rövid, 3-4 mondatos indoklás.",
+            "prediction": "PONTOS VÉGEREDMÉNY TIPP (pl. 2-1)",
+            "main_tip": "FŐ TIPP (Piac és Kimenetel) (Esély: XX%)",
+            "value_tip": "VALUE TIPP (Piac és Kimenetel) @ [Odds] (Value: XX%)"
+        }
         """
         
         self.last_prompts['boss'] = prompt
@@ -294,21 +297,45 @@ class AICommittee:
             print(f"DEBUG - Főnök Bemenete: {context_data_summary}")
             
             # Priority 1: Groq (Llama 3.3 70b) - KIZÁRÓLAGOSAN
-            if self.groq_client:
-                completion = self.groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7
-                )
-                return completion.choices[0].message.content
+            completion = self.groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=2000
+            )
+            content = completion.choices[0].message.content
             
-            return "Hiba: Nincs konfigurált Groq kliens."
+            # JSON Repair / Extraction Logic
+            try:
+                # Find the first '{' and the last '}'
+                start_idx = content.find('{')
+                end_idx = content.rfind('}')
+                
+                if start_idx != -1 and end_idx != -1:
+                    json_str = content[start_idx:end_idx+1]
+                    json_data = json.loads(json_str)
+                    
+                    # Reconstruct readable format for UI
+                    formatted_output = f"""
+**RÖVID ELEMZÉS**: {json_data.get('analysis', 'N/A')}
+
+**PONTOS VÉGEREDMÉNY TIPP**: {json_data.get('prediction', 'N/A')}
+
+**FŐ TIPP**: {json_data.get('main_tip', 'N/A')}
+
+**VALUE TIPP**: {json_data.get('value_tip', 'N/A')}
+"""
+                    return formatted_output
+                else:
+                    return f"Hiba: Nem sikerült JSON-t találni a válaszban.\nNyers válasz: {content}"
+            except json.JSONDecodeError as je:
+                return f"Hiba: Érvénytelen JSON formátum.\nPython hiba: {str(je)}\nNyers válasz: {content}"
                 
         except Exception as e:
             import traceback
-            error_msg = f"RÉSZLETES HIBA A FŐNÖKNÉL:\n{str(e)}\n\nHELYSZÍN:\n{traceback.format_exc()}"
-            print(f"CRITICAL ERROR IN BOSS:\n{error_msg}")
-            return error_msg
+            error_message = f"CRITICAL ERROR:\nType: {type(e).__name__}\nMessage: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+            print(error_message) # Konzolra
+            return error_message # UI-ra is ezt küldd vissza!
 
     def run_prophet(self, match_data, home_team, away_team):
         # Use Groq (llama-3.3-70b-versatile)
