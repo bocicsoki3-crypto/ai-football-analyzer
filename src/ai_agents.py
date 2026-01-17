@@ -27,7 +27,7 @@ class AICommittee:
         if not self.mistral_client and os.environ.get("MISTRAL_API_KEY"):
             self.mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
         # Initialize Gemini
-        if not self.gemini_model and os.environ.get("GOOGLE_API_KEY"):
+        if os.environ.get("GOOGLE_API_KEY"):
             genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
             # A list_models() alapjan a legstabilabb elerheto verzio:
             self.gemini_model = genai.GenerativeModel('gemini-2.0-flash')
@@ -198,7 +198,7 @@ class AICommittee:
         self.last_prompts['scout'] = prompt
         
         try:
-            # Priority: Gemini 2.0 Flash (Now 1.5 Flash with Retry)
+            # Priority: Gemini 2.0 Flash
             if self.gemini_model:
                 return self._generate_with_retry(prompt)
                 
@@ -321,7 +321,7 @@ class AICommittee:
         self.last_prompts['boss'] = prompt
         
         try:
-            # Priority 1: Gemini 2.0 Flash (Now 1.5 Flash with Retry)
+            # Priority 1: Gemini 2.0 Flash
             if self.gemini_model:
                 return self._generate_with_retry(prompt)
                 
