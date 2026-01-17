@@ -383,7 +383,8 @@ with tab1:
                 # We extract injuries and h2h inside analyze_match now, but we pass referee/venue
                 injuries = match_details.get('injuries', [])
                 h2h = match_details.get('h2h', [])
-                scout_report = ai_committee.run_scout(home_name, away_name, injuries, h2h, referee, venue)
+                match_date = match['fixture']['date'].split('T')[0]
+                scout_report = ai_committee.run_scout(home_name, away_name, injuries, h2h, referee, venue, match_date)
                 
                 # Tactician
                 st.write("♟️ A Taktikus vizsgálja a stílusokat...")

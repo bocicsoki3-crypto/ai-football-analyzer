@@ -4,6 +4,7 @@ import json
 import ollama
 from tavily import TavilyClient
 from mistralai import Mistral
+from datetime import datetime
 
 class AICommittee:
     def __init__(self):
@@ -113,7 +114,7 @@ class AICommittee:
         except Exception as e:
             return f'{{"error": "Hiba a Statisztikusnál: {str(e)}"}}'
 
-    def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None):
+    def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None, match_date=None):
         self._setup_clients()
         
         search_context = ""
@@ -122,14 +123,12 @@ class AICommittee:
         # Tavily Search Integration
         if self.tavily_client:
             try:
-                # Kiterjesztett keresés: xG, xGA, PPG, hiányzók, MOTIVÁCIÓ, BÍRÓ, IDŐJÁRÁS, ODDS
-                query = f"""
-                site:fbref.com OR site:footystats.org OR site:transfermarkt.com OR site:whoscored.com OR site:flashscore.com 
-                {home_team} vs {away_team} head to head results last 5 matches injuries lineups referee stats weather forecast betting odds 
-                relegation battle cup rotation motivation
-                """
-                # Clean up query string
-                query = " ".join(query.split())
+                # Use current date if not provided
+                if not match_date:
+                    match_date = datetime.now().strftime("%Y-%m-%d")
+
+                # Kiterjesztett keresés: Angol nyelven a jobb találatokért
+                query = f"{home_team} vs {away_team} preview injuries lineup news {match_date} site:fbref.com OR site:whoscored.com"
                 
                 search_result = self.tavily_client.search(query, search_depth="advanced", max_results=7)
                 
@@ -282,10 +281,10 @@ class AICommittee:
                 )
                 return completion.choices[0].message.content
                 
-            # Fallback: Groq (Mixtral 8x7b - closest to Mistral on Groq)
+            # Fallback: Groq (Llama 3 - Versatile)
             elif self.groq_client:
                 completion = self.groq_client.chat.completions.create(
-                    model="mixtral-8x7b-32768",
+                    model="llama-3.3-70b-versatile",
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.7
                 )
