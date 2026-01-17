@@ -1,8 +1,9 @@
 import os
 import time
-from groq import Groq
+import re
 import json
-import ollama
+import traceback
+from groq import Groq
 from tavily import TavilyClient
 from mistralai import Mistral
 import google.generativeai as genai
@@ -60,7 +61,6 @@ class AICommittee:
                 break
         
         # Ha minden próbálkozás sikertelen, adjunk vissza részletes hibát
-        import traceback
         error_details = f"{str(last_error)}\n{traceback.format_exc()}" if last_error else "Ismeretlen hiba"
         return f"Hiba: Nem sikerült lekérni az adatot 5 próbálkozás után sem.\n\nTechnikai részletek:\n{error_details}"
 
@@ -77,17 +77,17 @@ class AICommittee:
         h_card = comp_stats.get('home_team_yellow_cards', 'Nincs adat')
         a_card = comp_stats.get('away_team_yellow_cards', 'Nincs adat')
         
-        # Use Groq (llama-3.3-70b-versatile)
-        prompt = f"""
+        # TEMPLATE DEFINITION (No f-string to avoid JSON conflict)
+        prompt_template = """
         TE VAGY A STATISZTIKUS (AI Agent). A világ legjobb sportfogadási matematikusa.
         
-        Adatok: {json.dumps(match_data)}
+        Adatok: __MATCH_DATA__
         
         KONKRÉT SZEZONBELI ÁTLAGOK (RapidAPI):
-        - Hazai Szöglet Átlag: {h_corn}
-        - Vendég Szöglet Átlag: {a_corn}
-        - Hazai Sárga Lap Átlag: {h_card}
-        - Vendég Sárga Lap Átlag: {a_card}
+        - Hazai Szöglet Átlag: __H_CORN__
+        - Vendég Szöglet Átlag: __A_CORN__
+        - Hazai Sárga Lap Átlag: __H_CARD__
+        - Vendég Sárga Lap Átlag: __A_CARD__
         
         SZIGORÚ UTASÍTÁS:
         1. KERÜLD az általánosításokat (pl. "szoros meccs várható").
@@ -108,7 +108,7 @@ class AICommittee:
         - Over 2.5: A várható gólok (xG) összegéből számolj Poisson eloszlással pontos %-ot!
         
         KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
-        {{
+        {
             "home_win_percent": "XX%",
             "draw_percent": "XX%",
             "away_win_percent": "XX%",
@@ -117,10 +117,17 @@ class AICommittee:
             "btts_percent": "XX.X%",
             "over_2_5_percent": "XX.X%",
             "analysis": "Tömör, profi elemzés konkrét számokkal."
-        }}
+        }
         
         Csak a JSON objektumot add vissza!
         """
+        
+        # Safe Injection
+        prompt = prompt_template.replace("__MATCH_DATA__", json.dumps(match_data))
+        prompt = prompt.replace("__H_CORN__", str(h_corn))
+        prompt = prompt.replace("__A_CORN__", str(a_corn))
+        prompt = prompt.replace("__H_CARD__", str(h_card))
+        prompt = prompt.replace("__A_CARD__", str(a_card))
         
         self.last_prompts['statistician'] = prompt
 
@@ -133,17 +140,23 @@ class AICommittee:
                         temperature=0.7
                     )
                  content = completion.choices[0].message.content
-                 # Clean up potential markdown code blocks
-                 if "```json" in content:
-                        content = content.split("```json")[1].split("```")[0]
-                 elif "```" in content:
-                        content = content.split("```")[1]
-                 return content.strip()
+                 
+                 # Robust JSON Extraction (Regex)
+                 try:
+                    json_match = re.search(r'{.*}', content, re.DOTALL)
+                    if json_match:
+                        return json_match.group(0)
+                    else:
+                        # Fallback if no brackets found (unlikely but possible)
+                        return content.strip()
+                 except:
+                    return content.strip()
             
             return '{"error": "Nincs Groq kliens konfigurálva."}'
 
         except Exception as e:
             print(f"Hiba a Statisztikusnál: {str(e)}")
+            print(traceback.format_exc()) # Print full traceback
             return f'{{"error": "Hiba a Statisztikusnál: {str(e)}"}}'
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None, match_date=None):
@@ -175,6 +188,8 @@ class AICommittee:
                 
                 search_context = "\n\n".join(context_parts)
             except Exception as e:
+                print(f"Hiba a Tavily keresésnél: {str(e)}")
+                print(traceback.format_exc())
                 search_context = f"Hiba a Tavily keresésnél: {str(e)}"
 
         if not search_context:
@@ -189,10 +204,11 @@ class AICommittee:
         if not self.groq_client:
             return "Groq API Key hiányzik."
             
-        prompt = f"""
+        # TEMPLATE DEFINITION (No f-string!)
+        prompt_template = """
         TE VAGY A TAKTIKUS (Groq). Egy labdarúgó edző.
         
-        Adatok: {json.dumps(match_data)}
+        Adatok: __MATCH_DATA__
         
         FELADAT:
         Vizualizáld a mérkőzést a számok alapján!
@@ -202,6 +218,9 @@ class AICommittee:
         
         Írj le egy forgatókönyvet arról, hogyan fog kinézni a játék képe a pályán!
         """
+        
+        # Safe Injection
+        prompt = prompt_template.replace("__MATCH_DATA__", json.dumps(match_data))
         
         self.last_prompts['tactician'] = prompt
         
@@ -213,10 +232,12 @@ class AICommittee:
             )
             return completion.choices[0].message.content
         except Exception as e:
+            print(f"Hiba a Taktikusnál: {str(e)}")
+            print(traceback.format_exc())
             return f"Hiba a Taktikusnál: {str(e)}"
 
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
-        print("DEBUG: BOSS AGENT STARTED (v2.0 - Split Prompt Fix)")
+        print("DEBUG: BOSS AGENT STARTED (v3.0 - No f-string)")
         self._setup_clients()
         
         # Enforce Groq Only
@@ -240,12 +261,12 @@ class AICommittee:
 
         context_data_summary = f"Scout Length: {len(scout_report)}, H2H Count: {len(h2h_data)}, Standings: {len(standings_data)}"
 
-        # 1. RÉSZ: BEMENETEK (F-string, mert változókat tartalmaz)
-        prompt_inputs = f"""
+        # TEMPLATE DEFINITION (No f-string!)
+        prompt_template = """
         TE VAGY A FŐNÖK (Groq Llama 3.3). A "Keresztapa" a sportfogadásban.
         
         KORÁBBI HIBÁK ÉS TANULSÁGOK (VISSZACSATOLÁS):
-        {lessons_text}
+        __LESSONS__
         
         UTASÍTÁS:
         1. A Hírszerzőtől (Scout) most NYERS TAVILY ADATOKAT kapsz. Ezt neked kell feldolgoznod és kiszűrnöd belőle a releváns infót (sérülések, hírek).
@@ -257,20 +278,17 @@ class AICommittee:
         7. KÖTELEZŐEN elemezd a CSAPAT STATISZTIKÁKAT (home/away_stats) és a SPECIFIKUS ÁTLAGOKAT (computed_stats)!
         
         BEMENETEK:
-        1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): {statistician_report}
-        2. HÍRSZERZŐ JELENTÉSE (NYERS TAVILY ADAT - SZŰRD KI A LÉNYEGET!): {scout_report}
-        3. TAKTIKUS JELENTÉSE (Játék képe): {tactician_report}
-        4. MECCS ADATOK (Teljes nyers adat): {json.dumps(match_data)}
-        5. H2H ADATOK (h2h_data): {json.dumps(h2h_data)}
-        6. TABELLA (standings_data): {json.dumps(standings_data)}
-        7. SÉRÜLTEK (injuries_data): {json.dumps(injuries_data)}
-        8. HAZAI CSAPAT STATOK (home_stats): {json.dumps(home_stats)}
-        9. VENDÉG CSAPAT STATOK (away_stats): {json.dumps(away_stats)}
-        10. SPECIFIKUS ÁTLAGOK (computed_stats): {json.dumps(computed_stats)}
-        """
+        1. STATISZTIKUS JELENTÉSE (Matek & Valószínűségek): __STATISTICIAN__
+        2. HÍRSZERZŐ JELENTÉSE (NYERS TAVILY ADAT - SZŰRD KI A LÉNYEGET!): __SCOUT__
+        3. TAKTIKUS JELENTÉSE (Játék képe): __TACTICIAN__
+        4. MECCS ADATOK (Teljes nyers adat): __MATCH_DATA__
+        5. H2H ADATOK (h2h_data): __H2H__
+        6. TABELLA (standings_data): __STANDINGS__
+        7. SÉRÜLTEK (injuries_data): __INJURIES__
+        8. HAZAI CSAPAT STATOK (home_stats): __HOME_STATS__
+        9. VENDÉG CSAPAT STATOK (away_stats): __AWAY_STATS__
+        10. SPECIFIKUS ÁTLAGOK (computed_stats): __COMPUTED_STATS__
 
-        # 2. RÉSZ: FELADAT ÉS JSON FORMÁTUM (Sima string, hogy ne kelljen duplázni a kapcsos zárójeleket)
-        prompt_instructions = """
         FELADAT:
         Ne csak 1X2-ben gondolkodj! Értékeld ki a BTTS (Mindkét csapat lő gólt) és az Over/Under 2.5 piacokat is!
         
@@ -296,7 +314,18 @@ class AICommittee:
         }
         """
         
-        prompt = prompt_inputs + "\n" + prompt_instructions
+        # Safe Injection
+        prompt = prompt_template.replace("__LESSONS__", lessons_text)
+        prompt = prompt.replace("__STATISTICIAN__", statistician_report)
+        prompt = prompt.replace("__SCOUT__", scout_report)
+        prompt = prompt.replace("__TACTICIAN__", tactician_report)
+        prompt = prompt.replace("__MATCH_DATA__", json.dumps(match_data))
+        prompt = prompt.replace("__H2H__", json.dumps(h2h_data))
+        prompt = prompt.replace("__STANDINGS__", json.dumps(standings_data))
+        prompt = prompt.replace("__INJURIES__", json.dumps(injuries_data))
+        prompt = prompt.replace("__HOME_STATS__", json.dumps(home_stats))
+        prompt = prompt.replace("__AWAY_STATS__", json.dumps(away_stats))
+        prompt = prompt.replace("__COMPUTED_STATS__", json.dumps(computed_stats))
         
         self.last_prompts['boss'] = prompt
         
@@ -349,18 +378,19 @@ class AICommittee:
             return formatted_output
                 
         except Exception as e:
-            import traceback
             error_message = f"CRITICAL ERROR:\nType: {type(e).__name__}\nMessage: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
             print(error_message) # Konzolra
             return error_message # UI-ra is ezt küldd vissza!
 
     def run_prophet(self, match_data, home_team, away_team):
         # Use Groq (llama-3.3-70b-versatile)
-        prompt = f"""
+        
+        # TEMPLATE DEFINITION (No f-string!)
+        prompt_template = """
         TE VAGY A PRÓFÉTA (AI Agent). Jövőbelátó.
         
-        Meccs: {home_team} vs {away_team}
-        Adatok: {json.dumps(match_data)}
+        Meccs: __HOME__ vs __AWAY__
+        Adatok: __MATCH_DATA__
         
         SZIGORÚ UTASÍTÁS:
         1. KERÜLD az általánosításokat.
@@ -376,13 +406,17 @@ class AICommittee:
         
         KIMENETI FORMÁTUM (JSON ARRAY):
         [
-            {{"period": "0-15'", "event": "Korai nyomás, Hazai kapufa (Forgatókönyv: Dominancia)", "score_after": "0-0"}},
-            {{"period": "16-30'", "event": "Vendég kontra, GÓL! (Forgatókönyv: Kontrajáték)", "score_after": "0-1"}},
+            {"period": "0-15'", "event": "Korai nyomás, Hazai kapufa (Forgatókönyv: Dominancia)", "score_after": "0-0"},
+            {"period": "16-30'", "event": "Vendég kontra, GÓL! (Forgatókönyv: Kontrajáték)", "score_after": "0-1"},
             ...
         ]
         
         Csak a JSON tömböt add vissza, semmi mást!
         """
+        
+        prompt = prompt_template.replace("__HOME__", home_team)
+        prompt = prompt.replace("__AWAY__", away_team)
+        prompt = prompt.replace("__MATCH_DATA__", json.dumps(match_data))
         
         self.last_prompts['prophet'] = prompt
         
@@ -395,16 +429,23 @@ class AICommittee:
                     temperature=0.7
                 )
                 content = completion.choices[0].message.content
-                if "```json" in content:
-                    content = content.split("```json")[1].split("```")[0]
-                elif "```" in content:
-                    content = content.split("```")[1]
-                return content.strip()
+                
+                # Robust JSON Extraction (Regex)
+                try:
+                    # Look for JSON array [ ... ]
+                    json_match = re.search(r'\[.*\]', content, re.DOTALL)
+                    if json_match:
+                        return json_match.group(0)
+                    else:
+                        return content.strip()
+                except:
+                    return content.strip()
             
             return "Hiba: Nincs konfigurálva Groq kliens."
         
         except Exception as e:
             print(f"Prophet Error: {str(e)}")
+            print(traceback.format_exc())
             return f"Hiba a Prófétánál: {str(e)}"
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
