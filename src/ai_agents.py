@@ -307,29 +307,45 @@ class AICommittee:
             
             # JSON Repair / Extraction Logic
             try:
-                # Find the first '{' and the last '}'
-                start_idx = content.find('{')
-                end_idx = content.rfind('}')
+                # Regex a JSON blokk kinyerésére (figyelmen kívül hagyva a "Here is the JSON" szöveget)
+                json_match = re.search(r'{.*}', content, re.DOTALL)
                 
-                if start_idx != -1 and end_idx != -1:
-                    json_str = content[start_idx:end_idx+1]
-                    json_data = json.loads(json_str)
+                if json_match:
+                    clean_json_string = json_match.group(0)
+                    boss_data = json.loads(clean_json_string)
                     
                     # Reconstruct readable format for UI
                     formatted_output = f"""
-**RÖVID ELEMZÉS**: {json_data.get('analysis', 'N/A')}
+**RÖVID ELEMZÉS**: {boss_data.get('analysis', 'N/A')}
 
-**PONTOS VÉGEREDMÉNY TIPP**: {json_data.get('prediction', 'N/A')}
+**PONTOS VÉGEREDMÉNY TIPP**: {boss_data.get('prediction', 'N/A')}
 
-**FŐ TIPP**: {json_data.get('main_tip', 'N/A')}
+**FŐ TIPP**: {boss_data.get('main_tip', 'N/A')}
 
-**VALUE TIPP**: {json_data.get('value_tip', 'N/A')}
+**VALUE TIPP**: {boss_data.get('value_tip', 'N/A')}
 """
                     return formatted_output
                 else:
-                    return f"Hiba: Nem sikerült JSON-t találni a válaszban.\nNyers válasz: {content}"
-            except json.JSONDecodeError as je:
-                return f"Hiba: Érvénytelen JSON formátum.\nPython hiba: {str(je)}\nNyers válasz: {content}"
+                    raise ValueError("Nem található JSON objektum a válaszban.")
+            
+            except Exception as e:
+                print(f"JSON PARSING ERROR:\nRaw Response: {content}\nError: {e}")
+                # Fallback: Ha nem sikerül, adjon vissza egy üres, de érvényes objektumot, ne omoljon össze
+                boss_data = {"analysis": "Hiba a feldolgozásban", "main_tip": "Nincs adat", "score_prediction": "Nincs adat"}
+                
+                return f"""
+**RÖVID ELEMZÉS**: Hiba a feldolgozásban (JSON Parsing Error)
+
+**PONTOS VÉGEREDMÉNY TIPP**: Nincs adat
+
+**FŐ TIPP**: Nincs adat
+
+**VALUE TIPP**: Nincs adat
+
+**DEBUG INFO**:
+{str(e)}
+Raw: {content[:500]}...
+"""
                 
         except Exception as e:
             import traceback
