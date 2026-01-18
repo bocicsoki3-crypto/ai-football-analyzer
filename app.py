@@ -159,7 +159,7 @@ if not check_password():
 
 # Initialize modules
 @st.cache_resource
-def get_managers(version=9):
+def get_managers(version=10):
     return DataManager(), AICommittee(), DBManager()
 
 data_manager, ai_committee, db_manager = get_managers()
@@ -405,68 +405,72 @@ with tab1:
             analyze_clicked = st.button("🚀 BIZOTTSÁG ÖSSZEHÍVÁSA (ELEMZÉS START)", use_container_width=True)
         
         if analyze_clicked:
-            fixture_id = match['fixture']['id']
-            home_id = match['teams']['home']['id']
-            away_id = match['teams']['away']['id']
-            league_id = match['league']['id']
-            season = match['league']['season']
-            
-            with st.status("🕵️ A Bizottság ülésezik...", expanded=True) as status:
-                # 1. Gather detailed data
-                st.write("📊 Adatok gyűjtése a mérkőzésről (Sérültek, H2H, Statisztikák)...")
-                match_details = data_manager.get_match_details(fixture_id, home_id, away_id, league_id, season)
-                # Store raw details for the other tab
-                st.session_state['raw_match_details'] = match_details
+            try:
+                fixture_id = match['fixture']['id']
+                home_id = match['teams']['home']['id']
+                away_id = match['teams']['away']['id']
+                league_id = match['league']['id']
+                season = match['league']['season']
                 
-                # Extract referee and venue if available
-                referee = match['fixture'].get('referee', 'Ismeretlen')
-                venue = match['fixture'].get('venue', {}).get('name', 'Ismeretlen')
-                
-                # 2. Get learned lessons
-                st.write("🧠 Korábbi tapasztalatok betöltése...")
-                lessons = db_manager.get_lessons()
-                
-                # 3. Run AI Committee Steps Manually for Progress
-                # Statistician
-                st.write("📈 A Statisztikus számolja az esélyeket (xG, Forma)...")
-                stat_report = ai_committee.run_statistician(match_details)
-                time.sleep(2) # Delay to avoid rate limits
-                
-                # Scout
-                st.write("🔍 A Hírszerző elemzi a hiányzókat és a bírót...")
-                # We extract injuries and h2h inside analyze_match now, but we pass referee/venue
-                injuries = match_details.get('injuries', [])
-                h2h = match_details.get('h2h', [])
-                match_date = match['fixture']['date'].split('T')[0]
-                scout_report = ai_committee.run_scout(home_name, away_name, injuries, h2h, referee, venue, match_date)
-                time.sleep(2) # Delay to avoid rate limits
-                
-                # Tactician
-                st.write("♟️ A Taktikus vizsgálja a stílusokat...")
-                tactician_report = ai_committee.run_tactician(home_name, away_name)
-                time.sleep(2) # Delay to avoid rate limits
-                
-                # Prophet
-                st.write("🔮 A Próféta megírja a forgatókönyvet...")
-                prophet_report = ai_committee.run_prophet(stat_report, scout_report, tactician_report, match_details)
-                time.sleep(2) # Delay to avoid rate limits
-                
-                # Boss
-                st.write("👔 A Főnök meghozza a végső döntést...")
-                boss_report = ai_committee.run_boss(stat_report, scout_report, tactician_report, match_details, lessons, prophet_report)
-                
-                results = {
-                    "statistician": stat_report,
-                    "scout": scout_report,
-                    "tactician": tactician_report,
-                    "prophet": prophet_report,
-                    "boss": boss_report
-                }
-                
-                status.update(label="Elemzés elkészült! 🚀", state="complete", expanded=False)
-                
-                st.session_state['analysis_results'] = results
-                st.session_state['selected_match_data'] = match
+                with st.status("🕵️ A Bizottság ülésezik...", expanded=True) as status:
+                    # 1. Gather detailed data
+                    st.write("📊 Adatok gyűjtése a mérkőzésről (Sérültek, H2H, Statisztikák)...")
+                    match_details = data_manager.get_match_details(fixture_id, home_id, away_id, league_id, season)
+                    # Store raw details for the other tab
+                    st.session_state['raw_match_details'] = match_details
+                    
+                    # Extract referee and venue if available
+                    referee = match['fixture'].get('referee', 'Ismeretlen')
+                    venue = match['fixture'].get('venue', {}).get('name', 'Ismeretlen')
+                    
+                    # 2. Get learned lessons
+                    st.write("🧠 Korábbi tapasztalatok betöltése...")
+                    lessons = db_manager.get_lessons()
+                    
+                    # 3. Run AI Committee Steps Manually for Progress
+                    # Statistician
+                    st.write("📈 A Statisztikus számolja az esélyeket (xG, Forma)...")
+                    stat_report = ai_committee.run_statistician(match_details)
+                    time.sleep(2) # Delay to avoid rate limits
+                    
+                    # Scout
+                    st.write("🔍 A Hírszerző elemzi a hiányzókat és a bírót...")
+                    # We extract injuries and h2h inside analyze_match now, but we pass referee/venue
+                    injuries = match_details.get('injuries', [])
+                    h2h = match_details.get('h2h', [])
+                    match_date = match['fixture']['date'].split('T')[0]
+                    scout_report = ai_committee.run_scout(home_name, away_name, injuries, h2h, referee, venue, match_date)
+                    time.sleep(2) # Delay to avoid rate limits
+                    
+                    # Tactician
+                    st.write("♟️ A Taktikus vizsgálja a stílusokat...")
+                    tactician_report = ai_committee.run_tactician(home_name, away_name)
+                    time.sleep(2) # Delay to avoid rate limits
+                    
+                    # Prophet
+                    st.write("🔮 A Próféta megírja a forgatókönyvet...")
+                    prophet_report = ai_committee.run_prophet(stat_report, scout_report, tactician_report, match_details)
+                    time.sleep(2) # Delay to avoid rate limits
+                    
+                    # Boss
+                    st.write("👔 A Főnök meghozza a végső döntést...")
+                    boss_report = ai_committee.run_boss(stat_report, scout_report, tactician_report, match_details, lessons, prophet_report)
+                    
+                    results = {
+                        "statistician": stat_report,
+                        "scout": scout_report,
+                        "tactician": tactician_report,
+                        "prophet": prophet_report,
+                        "boss": boss_report
+                    }
+                    
+                    status.update(label="Elemzés elkészült! 🚀", state="complete", expanded=False)
+                    
+                    st.session_state['analysis_results'] = results
+                    st.session_state['selected_match_data'] = match
+            except Exception as e:
+                st.error(f"❌ Hiba történt az elemzés során: {str(e)}")
+                print(f"ERROR DETAILS: {e}")
 
         # Display Results
         if 'analysis_results' in st.session_state:

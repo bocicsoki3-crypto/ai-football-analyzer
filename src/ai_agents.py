@@ -252,10 +252,19 @@ class AICommittee:
         except Exception as e:
             return f"Tactical Analysis Error: {e}"
 
+    def _load_lessons(self):
+        try:
+            if os.path.exists("lessons.json"):
+                with open("lessons.json", "r", encoding="utf-8") as f:
+                    return json.load(f)
+            return []
+        except:
+            return []
+
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None, prophet_data=None):
         """ 
-        Boss Agent: QUALITY SUPERVISOR + LOGIC ENFORCER (GPT-4o). 
-        Egyesíti a Próféta meglátásait a szigorú matematikával. 
+        Boss Agent: SELF-LEARNING EDITION (Öntanuló). 
+        Beolvassa a múltbeli hibákat (lessons), hogy ne kövesse el őket újra.
         """ 
         import json 
         import re 
@@ -267,19 +276,35 @@ class AICommittee:
         if not api_key: return {"main_tip": "HIBA: Nincs API Key"} 
         
         client = OpenAI(api_key=api_key) 
+
+        # 1. Leckék betöltése (Ha nincs átadva, betölti a fájlból)
+        lessons_list = lessons if lessons else self._load_lessons()
+        
+        # Leckék formázása szöveggé
+        lessons_text = "NO PREVIOUS LESSONS."
+        if lessons_list:
+            lessons_text = "!!! IMPORTANT LESSONS FROM PAST MISTAKES !!!\n"
+            for lesson in lessons_list[-5:]: # Csak az utolsó 5 legfrissebb leckét vesszük figyelembe
+                lessons_text += f"- {lesson}\n"
     
         # A Próféta ajánlásának beépítése 
         prophet_text = "" 
         if prophet_data and "recommendation" in prophet_data: 
             prophet_text = f"THE PROPHET ADVISES: {prophet_data['recommendation']} because {prophet_data.get('analysis', '')}. CONSIDER THIS SERIOUSLY." 
     
-        system_prompt = """ 
+        system_prompt = f""" 
         YOU ARE THE HEAD ANALYST. PREDICT THE PERFECT OUTCOME. 
+        
+        =================================================== 
+        YOUR MEMORY (DO NOT REPEAT THESE MISTAKES): 
+        {lessons_text} 
+        ===================================================
         
         RULES: 
         1. LISTEN TO THE PROPHET: If the Prophet spots a tactical mismatch (e.g. Away Win), and Stats allow it, GO FOR IT. 
         2. CHECK NEWS: Injuries/Suspensions are critical. 
-        3. LOGIC CHECK: 
+        3. APPLY LESSONS: Use the memory above to avoid past errors.
+        4. LOGIC CHECK: 
            - If predicting 'Under 2.5', Score MUST be max 2 goals (1-0, 0-1, 1-1, 2-0, 0-2). 
            - If predicting 'Away Win', Score MUST show Away > Home (0-1, 1-2, etc.). 
         
@@ -287,8 +312,8 @@ class AICommittee:
         All values in the JSON (analysis, main_tip, value_tip) MUST BE IN HUNGARIAN.
         
         OUTPUT JSON ONLY: 
-        { 
-            "analysis": "Detailed reasoning including Tactics and Stats (Hungarian).", 
+        {{ 
+            "analysis": "Detailed reasoning including Tactics, Stats, and LESSONS learned (Hungarian).", 
             "score_prediction": "X-Y", 
             "main_tip": "The Winner or Goals prediction (Hungarian)", 
             "main_tip_confidence": "XX%", 
@@ -296,7 +321,7 @@ class AICommittee:
             "value_tip_odds": "Decimal Odds", 
             "btts_percent": "XX%", 
             "over_2_5_percent": "XX%" 
-        } 
+        }} 
         """ 
     
         try: 
