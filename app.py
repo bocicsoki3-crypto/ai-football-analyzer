@@ -453,7 +453,7 @@ with tab1:
                 
                 # Boss
                 st.write("👔 A Főnök meghozza a végső döntést...")
-                boss_report = ai_committee.run_boss(stat_report, scout_report, tactician_report, match_details, lessons)
+                boss_report = ai_committee.run_boss(stat_report, scout_report, tactician_report, match_details, lessons, prophet_report)
                 
                 results = {
                     "statistician": stat_report,

@@ -252,93 +252,99 @@ class AICommittee:
         except Exception as e:
             return f"Tactical Analysis Error: {e}"
 
-    def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
+    def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None, prophet_data=None):
         """ 
-        Boss Agent: OPENAI GPT-4o EDITION. 
-        A létező legokosabb modell + Logikai Kényszerítés (Logic Enforcer). 
+        Boss Agent: QUALITY SUPERVISOR + LOGIC ENFORCER (GPT-4o). 
+        Egyesíti a Próféta meglátásait a szigorú matematikával. 
         """ 
         import json 
         import re 
         import os 
-        from openai import OpenAI # Fontos: új kliens! 
-        print("--- BOSS AGENT: GPT-4o MASTER CLASS START ---") 
-        
-        # 1. A KLIENS INICIALIZÁLÁSA 
+        from openai import OpenAI 
+    
+        print("--- BOSS AGENT: TACTICAL & LOGICAL ANALYSIS ---") 
         api_key = os.getenv("OPENAI_API_KEY") 
-        if not api_key: 
-            return {"analysis": "HIBA: Hiányzik az OPENAI_API_KEY az .env fájlból!", "main_tip": "HIBA"} 
+        if not api_key: return {"main_tip": "HIBA: Nincs API Key"} 
         
         client = OpenAI(api_key=api_key) 
-        
-        # 2. A GRANDMASTER PROMPT (Pszichológia + Matek) 
+    
+        # A Próféta ajánlásának beépítése 
+        prophet_text = "" 
+        if prophet_data and "recommendation" in prophet_data: 
+            prophet_text = f"THE PROPHET ADVISES: {prophet_data['recommendation']} because {prophet_data.get('analysis', '')}. CONSIDER THIS SERIOUSLY." 
+    
         system_prompt = """ 
-        YOU ARE THE WORLD'S BEST FOOTBALL PREDICTOR (GPT-4o). 
-        GOAL: PROFITABILITY. NO HALLUCINATIONS. 
-        PERFORM A 5-DIMENSIONAL ANALYSIS: 
+        YOU ARE THE HEAD ANALYST. PREDICT THE PERFECT OUTCOME. 
         
-        PSYCHOLOGY: Check News for Motivation, Injuries, Coach sacking. 
+        RULES: 
+        1. LISTEN TO THE PROPHET: If the Prophet spots a tactical mismatch (e.g. Away Win), and Stats allow it, GO FOR IT. 
+        2. CHECK NEWS: Injuries/Suspensions are critical. 
+        3. LOGIC CHECK: 
+           - If predicting 'Under 2.5', Score MUST be max 2 goals (1-0, 0-1, 1-1, 2-0, 0-2). 
+           - If predicting 'Away Win', Score MUST show Away > Home (0-1, 1-2, etc.). 
         
-        EXTERNALS: Referee (Cards?), Weather, Pitch. 
-        
-        MATH: xG, Goals Scored/Conceded. 
-        
-        ODDS: Calculate 'Fair Odds' (1/Probability). Is there Value? 
-        
-        LOGIC CHECK: Ensure Score Prediction matches the Tip (e.g. Under 2.5 implies max 2 goals). 
-
         IMPORTANT: OUTPUT MUST BE IN HUNGARIAN LANGUAGE (Magyar).
         All values in the JSON (analysis, main_tip, value_tip) MUST BE IN HUNGARIAN.
         
-        OUTPUT JSON ONLY: { "analysis": "Professional analysis in HUNGARIAN...", "score_prediction": "X-Y", "main_tip": "Best Bet (Hungarian)", "main_tip_confidence": "XX%", "value_tip": "Value Bet (Hungarian)", "value_tip_odds": "1.XX", "btts_percent": "XX%", "over_2_5_percent": "XX%" } """ 
-        
+        OUTPUT JSON ONLY: 
+        { 
+            "analysis": "Detailed reasoning including Tactics and Stats (Hungarian).", 
+            "score_prediction": "X-Y", 
+            "main_tip": "The Winner or Goals prediction (Hungarian)", 
+            "main_tip_confidence": "XX%", 
+            "value_tip": "The Prophet's insight or High Odds tip (Hungarian)", 
+            "value_tip_odds": "Decimal Odds", 
+            "btts_percent": "XX%", 
+            "over_2_5_percent": "XX%" 
+        } 
+        """ 
+    
         try: 
             user_prompt = f""" 
-            ANALYZE THIS MATCH WITH PRECISION: 
-            
-            [NEWS & CONTEXT] 
+            MATCH DATA: 
+            {statistician_report} 
             {scout_report} 
-            
-            [TACTICS] 
             {tactician_report} 
             
-            [STATS] 
-            {statistician_report} 
+            {prophet_text} 
             
-            RETURN JSON ONLY. 
+            RETURN PERFECT JSON. 
             """ 
+    
             completion = client.chat.completions.create( 
-                model="gpt-4o", # A KIRÁLY KATEGÓRIA 
-                messages=[ 
-                    {"role": "system", "content": system_prompt}, 
-                    {"role": "user", "content": user_prompt} 
-                ], 
-                temperature=0.2, # Alacsony hőmérséklet a precizitásért 
-                response_format={"type": "json_object"} # GPT-4o garantálja a JSON-t! 
+                model="gpt-4o", 
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}], 
+                temperature=0.2, # Precizitás 
+                response_format={"type": "json_object"} 
             ) 
-            # --- 3. ADATFELDOLGOZÁS --- 
-            raw_content = completion.choices[0].message.content 
-            data = json.loads(raw_content) 
-            # --- 4. LOGIC ENFORCER (A RENDŐR) --- 
-            # Utólagos javítás, ha mégis ellentmondás lenne 
+    
+            data = json.loads(completion.choices[0].message.content) 
+    
+            # --- LOGIC ENFORCER (A RENDŐR - Utólagos javítás) --- 
+            # Ez garantálja a Quality-t: SOHA nem lesz ellentmondás. 
             tip = data.get("main_tip", "").lower() 
             score = data.get("score_prediction", "1-1") 
             
-            # Gólok kinyerése 
             try: 
                 nums = re.findall(r'\d+', score) 
-                hg, ag = int(nums[0]), int(nums[1]) 
+                hg, ag = int(nums[0]), int(nums[1]) if len(nums) > 1 else (1, 1) 
                 total = hg + ag 
             except: 
                 hg, ag, total = 1, 1, 2 
-            # Korrekciók 
-            if "under 2.5" in tip and total > 2: 
-                data["score_prediction"] = "1-1" # Kényszerített javítás 
-            if "over 2.5" in tip and total < 3: 
-                data["score_prediction"] = "2-1" # Kényszerített javítás 
-            if "home win" in tip and hg <= ag: 
-                data["score_prediction"] = "1-0" # Kényszerített javítás 
+    
+            # 1. Szabály: Under/Over javítás 
+            if ("under 2.5" in tip or "alatt" in tip) and total > 2: 
+                data["score_prediction"] = "1-1" # Javítva 
+            if ("over 2.5" in tip or "felett" in tip) and total < 3: 
+                data["score_prediction"] = "2-1" # Javítva 
                 
-            return data 
+            # 2. Szabály: Győztes javítás 
+            if ("home win" in tip or "hazai" in tip) and hg <= ag: 
+                data["score_prediction"] = "1-0" 
+            if ("away win" in tip or "vendég" in tip) and ag <= hg: 
+                data["score_prediction"] = "0-1" # Ha a Próféta szerint Vendég nyer, az eredmény is az legyen!
+            
+            return data
         except Exception as e: 
             print(f"OPENAI ERROR: {e}") 
             return { 
@@ -349,47 +355,55 @@ class AICommittee:
                 "btts_percent": "50%" 
             }
 
-    def run_prophet(self, stat_report, scout_report, tactician_report, match_data):
+    def run_prophet(self, stat_report, scout_report, tactician_report, match_data=None):
         """ 
-        Prophet Agent: GPT-4o. 
-        Feladata: Value Betek és kockázatosabb, de logikus tippek keresése. 
+        Prophet Agent: TACTICAL KILLER (GPT-4o). 
+        Feladata: Megtalálni a taktikai okot, amiért a favorit kikaphat. 
         """ 
         import json 
         import os 
         from openai import OpenAI 
-        
+    
         api_key = os.getenv("OPENAI_API_KEY") 
         if not api_key: return {} 
         
         client = OpenAI(api_key=api_key) 
         
-        system_prompt = """ YOU ARE THE "PROPHET". YOU FIND VALUE WHERE OTHERS DON'T. IGNORE THE FAVORITES. LOOK FOR THE UPSET OR THE HIGH ODDS. 
+        system_prompt = """ 
+        YOU ARE A CONTRARIAN PROFESSIONAL BETTOR. 
+        YOUR JOB IS TO FIND THE "UPSET" (The Surprise Result). 
         
-        ANALYZE FOR VALUE IN HUNGARIAN (MAGYARUL): 
+        ANALYZE THE TACTICAL MATCHUP: 
+        1. IGNORE THE TABLE. Focus on Styles. 
+        2. LOOK FOR MISMATCHES: 
+           - Does the Away team have fast wingers against a slow Home defense? -> AWAY WIN. 
+           - Is the Home team missing a key striker? -> AWAY WIN or DRAW. 
         
-        Is the underdog motivated? 
+        IF YOU SEE A TACTICAL ADVANTAGE FOR THE UNDERDOG, RECOMMEND IT BOLDLY. 
         
-        Is the favorite team tired or missing players? 
+        IMPORTANT: OUTPUT MUST BE IN HUNGARIAN LANGUAGE (Magyar).
         
-        Are the odds for BTTS or Over 2.5 too high?
-
-        IMPORTANT: PREDICT A LIKELY EXACT SCORE TO HELP THE BOSS.
-        
-        OUTPUT JSON ONLY: { "analysis": "Brief reasoning for the risky/value bet in HUNGARIAN.", "recommendation": "e.g. Home Win (Risky) or BTTS (in Hungarian)", "likely_score_prediction": "X-Y", "confidence": "Medium/High", "estimated_odds": "e.g. 2.40" } """ 
-        
+        OUTPUT JSON: 
+        { 
+            "analysis": "Brief tactical reason for the tip (in Hungarian).", 
+            "recommendation": "e.g. Fiorentina Win (Tactical Mismatch) (in Hungarian)", 
+            "confidence": "High/Medium", 
+            "estimated_odds": "e.g. 3.20" 
+        } 
+        """ 
+    
         try: 
+            user_content = f"STATS: {stat_report}\nNEWS: {scout_report}\nTACTICS: {tactician_report}" 
+            
             completion = client.chat.completions.create( 
                 model="gpt-4o", 
-                messages=[ 
-                    {"role": "system", "content": system_prompt}, 
-                    {"role": "user", "content": f"STATS:\n{stat_report}\nNEWS:\n{scout_report}\nTACTICS:\n{tactician_report}"} 
-                ], 
-                temperature=0.4, # Kicsit kreatívabb, hogy megtalálja a value-t 
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_content}], 
+                temperature=0.4, 
                 response_format={"type": "json_object"} 
             ) 
             return json.loads(completion.choices[0].message.content) 
         except: 
-            return {"recommendation": "No Value Found", "analysis": "Error in Prophet analysis."}
+            return {"recommendation": "No Value"}
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
         # 1. Step: Statistician
@@ -407,7 +421,7 @@ class AICommittee:
         prophet_report = self.run_prophet(stat_report, scout_report, tactician_report, match_data)
         
         # 5. Step: The Boss
-        final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons)
+        final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons, prophet_report)
         
         return {
             "statistician": stat_report,
