@@ -333,71 +333,45 @@ class AICommittee:
                 "btts_percent": "50%" 
             }
 
-    def run_prophet(self, match_data, home_team, away_team):
-        # Use Groq (llama-3.3-70b-versatile)
+    def run_prophet(self, stat_report, scout_report, match_data):
+        """ 
+        Prophet Agent: GPT-4o. 
+        Feladata: Value Betek és kockázatosabb, de logikus tippek keresése. 
+        """ 
+        import json 
+        import os 
+        from openai import OpenAI 
         
-        # TEMPLATE DEFINITION (No f-string!)
-        prompt_template = """
-        TE VAGY A PRÓFÉTA (AI Agent). Jövőbelátó.
+        api_key = os.getenv("OPENAI_API_KEY") 
+        if not api_key: return {} 
         
-        Meccs: __HOME__ vs __AWAY__
-        Adatok: __MATCH_DATA__
+        client = OpenAI(api_key=api_key) 
         
-        SZIGORÚ UTASÍTÁS:
-        1. KERÜLD az általánosításokat.
-        2. SZCENÁRIÓ-ELEMZÉS: A timeline tartalmazzon különböző forgatókönyveket (pl. mi van, ha korai gól esik?).
+        system_prompt = """ YOU ARE THE "PROPHET". YOU FIND VALUE WHERE OTHERS DON'T. IGNORE THE FAVORITES. LOOK FOR THE UPSET OR THE HIGH ODDS. 
         
-        FELADAT:
-        Készíts egy VALÓSZERŰ meccs-timeline-t 3 különböző forgatókönyv alapján:
-        1. Korai gól forgatókönyve.
-        2. "Szenvedős" 0-0 félidő forgatókönyve.
-        3. Késői dráma (70. perc után).
+        ANALYZE FOR VALUE: 
         
-        Válassz ki EGYET ezek közül, ami a legvalószínűbb a statisztikák alapján, és bontsd le negyedórákra.
+        Is the underdog motivated? 
         
-        KIMENETI FORMÁTUM (JSON ARRAY):
-        [
-            {"period": "0-15'", "event": "Korai nyomás, Hazai kapufa (Forgatókönyv: Dominancia)", "score_after": "0-0"},
-            {"period": "16-30'", "event": "Vendég kontra, GÓL! (Forgatókönyv: Kontrajáték)", "score_after": "0-1"},
-            ...
-        ]
+        Is the favorite team tired or missing players? 
         
-        Csak a JSON tömböt add vissza, semmi mást!
-        """
+        Are the odds for BTTS or Over 2.5 too high? 
         
-        prompt = prompt_template.replace("__HOME__", home_team)
-        prompt = prompt.replace("__AWAY__", away_team)
-        prompt = prompt.replace("__MATCH_DATA__", json.dumps(match_data))
+        OUTPUT JSON ONLY: { "analysis": "Brief reasoning for the risky/value bet.", "recommendation": "e.g. Home Win (Risky) or BTTS", "confidence": "Medium/High", "estimated_odds": "e.g. 2.40" } """ 
         
-        self.last_prompts['prophet'] = prompt
-        
-        try:
-            self._setup_clients()
-            if self.groq_client:
-                completion = self.groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.7
-                )
-                content = completion.choices[0].message.content
-                
-                # Robust JSON Extraction (Regex)
-                try:
-                    # Look for JSON array [ ... ]
-                    json_match = re.search(r'\[.*\]', content, re.DOTALL)
-                    if json_match:
-                        return json_match.group(0)
-                    else:
-                        return content.strip()
-                except:
-                    return content.strip()
-            
-            return "Hiba: Nincs konfigurálva Groq kliens."
-        
-        except Exception as e:
-            print(f"Prophet Error: {str(e)}")
-            print(traceback.format_exc())
-            return f"Hiba a Prófétánál: {str(e)}"
+        try: 
+            completion = client.chat.completions.create( 
+                model="gpt-4o", 
+                messages=[ 
+                    {"role": "system", "content": system_prompt}, 
+                    {"role": "user", "content": f"STATS:\n{stat_report}\nNEWS:\n{scout_report}"} 
+                ], 
+                temperature=0.4, # Kicsit kreatívabb, hogy megtalálja a value-t 
+                response_format={"type": "json_object"} 
+            ) 
+            return json.loads(completion.choices[0].message.content) 
+        except: 
+            return {"recommendation": "No Value Found", "analysis": "Error in Prophet analysis."}
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
         # 1. Step: Statistician
@@ -411,8 +385,8 @@ class AICommittee:
         # 3. Step: Tactician
         tactician_report = self.run_tactician(match_data)
         
-        # 4. Step: The Prophet (Timeline)
-        prophet_report = self.run_prophet(match_data, home_team_name, away_team_name)
+        # 4. Step: The Prophet (Value Hunter)
+        prophet_report = self.run_prophet(stat_report, scout_report, match_data)
         
         # 5. Step: The Boss
         final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons)

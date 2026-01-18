@@ -640,6 +640,22 @@ with tab1:
             with col2:
                 with st.expander("🧠 TAKTIKUS JELENTÉSE (Groq)", expanded=True):
                     st.write(results['tactician'])
+                
+                with st.expander("🔮 A PRÓFÉTA JÖVENDÖLÉSE (GPT-4o)", expanded=True):
+                    prophet_res = results.get('prophet', {})
+                    if isinstance(prophet_res, dict):
+                        # Structured Display
+                        p_col1, p_col2 = st.columns(2)
+                        with p_col1:
+                            st.metric("🔮 Ajánlás", prophet_res.get('recommendation', 'N/A'))
+                        with p_col2:
+                            st.metric("📊 Odds", prophet_res.get('estimated_odds', 'N/A'), delta=prophet_res.get('confidence', ''))
+                        
+                        st.markdown("##### 📜 Indoklás")
+                        st.info(prophet_res.get('analysis', 'Nincs elemzés.'))
+                    else:
+                        st.write(prophet_res)
+
                 with st.expander("👔 A FŐNÖK DÖNTÉSE (GPT-4o)", expanded=True):
                     boss_res = results['boss']
                     if isinstance(boss_res, dict):
@@ -805,7 +821,20 @@ with tab3:
                         st.markdown(full_analysis.get('tactician', 'Nincs adat'))
                         st.markdown("---")
                         st.markdown("### Próféta")
-                        st.markdown(full_analysis.get('prophet', 'Nincs adat'))
+                        
+                        prophet_res = full_analysis.get('prophet', 'Nincs adat')
+                        if isinstance(prophet_res, dict):
+                             # Structured Display for Archive
+                             ap_col1, ap_col2 = st.columns(2)
+                             with ap_col1:
+                                 st.metric("🔮 Ajánlás", prophet_res.get('recommendation', 'N/A'))
+                             with ap_col2:
+                                 st.metric("📊 Odds", prophet_res.get('estimated_odds', 'N/A'), delta=prophet_res.get('confidence', ''))
+                             
+                             st.markdown("**Indoklás:**")
+                             st.info(prophet_res.get('analysis', 'Nincs elemzés.'))
+                        else:
+                             st.markdown(prophet_res)
                     with at4:
                         boss_content = full_analysis.get('boss', 'Nincs adat')
                         if isinstance(boss_content, dict):
