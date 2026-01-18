@@ -349,7 +349,7 @@ class AICommittee:
                 "btts_percent": "50%" 
             }
 
-    def run_prophet(self, stat_report, scout_report, match_data):
+    def run_prophet(self, stat_report, scout_report, tactician_report, match_data):
         """ 
         Prophet Agent: GPT-4o. 
         Feladata: Value Betek és kockázatosabb, de logikus tippek keresése. 
@@ -380,7 +380,7 @@ class AICommittee:
                 model="gpt-4o", 
                 messages=[ 
                     {"role": "system", "content": system_prompt}, 
-                    {"role": "user", "content": f"STATS:\n{stat_report}\nNEWS:\n{scout_report}"} 
+                    {"role": "user", "content": f"STATS:\n{stat_report}\nNEWS:\n{scout_report}\nTACTICS:\n{tactician_report}"} 
                 ], 
                 temperature=0.4, # Kicsit kreatívabb, hogy megtalálja a value-t 
                 response_format={"type": "json_object"} 
@@ -402,7 +402,7 @@ class AICommittee:
         tactician_report = self.run_tactician(home_team_name, away_team_name)
         
         # 4. Step: The Prophet (Value Hunter)
-        prophet_report = self.run_prophet(stat_report, scout_report, match_data)
+        prophet_report = self.run_prophet(stat_report, scout_report, tactician_report, match_data)
         
         # 5. Step: The Boss
         final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons)

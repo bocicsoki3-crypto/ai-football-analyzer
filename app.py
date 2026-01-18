@@ -437,12 +437,12 @@ with tab1:
                 
                 # Tactician
                 st.write("♟️ A Taktikus vizsgálja a stílusokat...")
-                tactician_report = ai_committee.run_tactician(match_details)
+                tactician_report = ai_committee.run_tactician(home_name, away_name)
                 time.sleep(2) # Delay to avoid rate limits
                 
                 # Prophet
                 st.write("🔮 A Próféta megírja a forgatókönyvet...")
-                prophet_report = ai_committee.run_prophet(match_details, home_name, away_name)
+                prophet_report = ai_committee.run_prophet(stat_report, scout_report, tactician_report, match_details)
                 time.sleep(2) # Delay to avoid rate limits
                 
                 # Boss
