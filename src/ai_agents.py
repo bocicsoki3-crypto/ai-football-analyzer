@@ -326,25 +326,34 @@ class AICommittee:
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
         
-        # 1. Step: Statistician (MOST MÁR A NEVEKET KAPJA, NEM A MATCH_DATA-T) 
-        stat_report = self.run_statistician(home_team_name, away_team_name) 
+        # 1. Statisztikus (JSON-t kapunk vissza stringként) 
+        stat_json_str = self.run_statistician(home_team_name, away_team_name) 
         
-        # 2. Step: Scout 
+        # Kibontjuk a szöveges jelentést a többi ügynöknek 
+        try: 
+            stat_data = json.loads(stat_json_str) 
+            stat_text_report = stat_data.get("analysis", "No Data") 
+        except: 
+            stat_text_report = stat_json_str # Fallback 
+
+        # 2. Scout 
         injuries = match_data.get('injuries', []) 
         h2h = match_data.get('h2h', []) 
         scout_report = self.run_scout(home_team_name, away_team_name, injuries, h2h) 
         
-        # 3. Step: Tactician 
+        # 3. Tactician 
         tactician_report = self.run_tactician(home_team_name, away_team_name) 
         
-        # 4. Step: The Prophet (Value Hunter) 
-        prophet_report = self.run_prophet(stat_report, scout_report, tactician_report, match_data) 
+        # 4. Prophet (A szöveges jelentést kapja!) 
+        prophet_report = self.run_prophet(stat_text_report, scout_report, tactician_report, match_data) 
         
-        # 5. Step: The Boss 
-        final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons, prophet_report) 
+        # 5. Boss (A szöveges jelentést kapja!) 
+        final_verdict = self.run_boss(stat_text_report, scout_report, tactician_report, match_data, lessons, prophet_report) 
         
+        # KÖZÖS VISSZATÉRÉS: 
+        # A 'statistician' kulcsba most a JSON STRINGET tesszük, hogy a UI fel tudja dolgozni! 
         return { 
-            "statistician": stat_report, 
+            "statistician": stat_json_str, 
             "scout": scout_report, 
             "tactician": tactician_report, 
             "prophet": prophet_report, 
