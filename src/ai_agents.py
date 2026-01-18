@@ -263,8 +263,8 @@ class AICommittee:
 
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None, prophet_data=None):
         """ 
-        Boss Agent: SELF-LEARNING EDITION (Öntanuló). 
-        Beolvassa a múltbeli hibákat (lessons), hogy ne kövesse el őket újra.
+        Boss Agent: EVIDENCE BASED EDITION (GPT-4o). 
+        Kényszerítjük az AI-t, hogy használja a RapidAPI adatait a döntéshez. 
         """ 
         import json 
         import re 
@@ -290,39 +290,42 @@ class AICommittee:
         # A Próféta ajánlásának beépítése 
         prophet_text = "" 
         if prophet_data and "recommendation" in prophet_data: 
-            prophet_text = f"THE PROPHET ADVISES: {prophet_data['recommendation']} because {prophet_data.get('analysis', '')}. CONSIDER THIS SERIOUSLY." 
+            prophet_text = f"PROPHET'S ADVICE: {prophet_data['recommendation']} (Reason: {prophet_data.get('analysis','')})" 
     
         system_prompt = f""" 
-        YOU ARE THE HEAD ANALYST. PREDICT THE PERFECT OUTCOME. 
+        YOU ARE A DATA-DRIVEN FOOTBALL ANALYST. NOT A FAN. 
+        INPUT DATA SOURCE: OFFICIAL API STATS (TRUST THIS 100%). 
         
         =================================================== 
         YOUR MEMORY (DO NOT REPEAT THESE MISTAKES): 
         {lessons_text} 
         ===================================================
+
+        PROTOCOL BEFORE TIPPING: 
         
-        RULES: 
-        1. LISTEN TO THE PROPHET: If the Prophet spots a tactical mismatch (e.g. Away Win), and Stats allow it, GO FOR IT. 
-        2. CHECK NEWS: Injuries/Suspensions are critical. 
-        3. APPLY LESSONS: Use the memory above to avoid past errors.
-        4. NO BET POLICY (CRITICAL):
-           - If data is missing (e.g. unknown injuries, "Nincs adat" for xG), OUTPUT "NO BET".
-           - If your confidence in the winner/goals is < 70%, OUTPUT "NO BET".
-           - If "NO BET", set "main_tip" to "NO BET (Kihagyva)" and explain why in "analysis".
-        5. LOGIC CHECK: 
-           - If predicting 'Under 2.5', Score MUST be max 2 goals (1-0, 0-1, 1-1, 2-0, 0-2). 
-           - If predicting 'Away Win', Score MUST show Away > Home (0-1, 1-2, etc.). 
+        1. COMPARE FORM: Look at the last 5 games in 'stat_report'. Who scored more goals? 
+        2. COMPARE H2H: Who won the last 3 meetings? 
+        3. CHECK SQUAD: Are key players injured in 'scout_report'? 
+        4. APPLY LESSONS: Use the memory above to avoid past errors.
+
+        CRITICAL RULE: 
+        
+        - If API Data says Team B is in better form (more wins/goals), you CANNOT bet on Team A just because they are "historically" good. 
+        - If API Data shows a close match, USE "Double Chance" (1X or X2) instead of strict Win. 
+        - NO BET POLICY: If data is missing or confidence < 70%, OUTPUT "NO BET".
         
         IMPORTANT: OUTPUT MUST BE IN HUNGARIAN LANGUAGE (Magyar).
-        All values in the JSON (analysis, main_tip, value_tip) MUST BE IN HUNGARIAN.
-        
-        OUTPUT JSON ONLY: 
+        All values in the JSON (analysis, main_tip, value_tip, evidence) MUST BE IN HUNGARIAN.
+
+        OUTPUT JSON STRUCTURE: 
         {{ 
-            "analysis": "Detailed reasoning including Tactics, Stats, and LESSONS learned (Hungarian).", 
-            "score_prediction": "X-Y (or 'SKIP' if NO BET)", 
-            "main_tip": "The Winner/Goals prediction OR 'NO BET' (Hungarian)", 
+            "evidence": "WRITE HERE THE EXACT STATS YOU USED (e.g. 'Away team scored 12 goals in last 5 games vs Home team 3 goals') (Hungarian).", 
+            "analysis": "Based on the evidence above... (Hungarian)", 
+            "score_prediction": "X-Y", 
+            "main_tip": "The Tip", 
             "main_tip_confidence": "XX%", 
-            "value_tip": "The Prophet's insight or High Odds tip (Hungarian)", 
-            "value_tip_odds": "Decimal Odds", 
+            "value_tip": "High Odds Tip", 
+            "value_tip_odds": "Decimal Odds",
             "btts_percent": "XX%", 
             "over_2_5_percent": "XX%" 
         }} 
@@ -330,20 +333,21 @@ class AICommittee:
     
         try: 
             user_prompt = f""" 
-            MATCH DATA: 
+            OFFICIAL API STATS: 
             {statistician_report} 
-            {scout_report} 
-            {tactician_report} 
+            TEAM NEWS (Injuries/Lineups): {scout_report} 
+            
+            TACTICAL ANALYSIS: {tactician_report} 
             
             {prophet_text} 
             
-            RETURN PERFECT JSON. 
+            TASK: Analyze the API STATS first. If the stats contradict the favorite, BET ON THE UNDERDOG or DRAW. 
             """ 
     
             completion = client.chat.completions.create( 
                 model="gpt-4o", 
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}], 
-                temperature=0.2, # Precizitás 
+                temperature=0.2, # Nagyon alacsony, hogy ragaszkodjon a tényekhez 
                 response_format={"type": "json_object"} 
             ) 
     
@@ -378,7 +382,9 @@ class AICommittee:
                 data["score_prediction"] = "1-0" 
             if ("away win" in tip or "vendég" in tip) and ag <= hg: 
                 data["score_prediction"] = "0-1" # Ha a Próféta szerint Vendég nyer, az eredmény is az legyen!
-            
+            if ("draw" in tip or "döntetlen" in tip) and hg != ag: 
+                data["score_prediction"] = "1-1" # Javítva
+
             return data
         except Exception as e: 
             print(f"OPENAI ERROR: {e}") 
