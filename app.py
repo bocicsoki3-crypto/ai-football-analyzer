@@ -252,25 +252,25 @@ with st.sidebar:
                 # Expander for League (Collapsed by default)
                 with st.expander(f"🏆 {l_name} ({len(league_fixtures)})", expanded=False):
                     for f in league_fixtures:
-                    try:
-                        # Convert to CET (Europe/Budapest)
-                        match_dt = pd.to_datetime(f['fixture']['date'])
-                        if match_dt.tzinfo is None:
-                            match_dt = match_dt.tz_localize('UTC')
-                        match_dt_cet = match_dt.tz_convert('Europe/Budapest')
-                        match_time_str = match_dt_cet.strftime('%H:%M') # Only time is enough inside list
-                    except:
-                        match_time_str = "??"
-                    
-                    # Button for each match
-                    # home vs away (Time)
-                    btn_label = f"{match_time_str} | {f['teams']['home']['name']} - {f['teams']['away']['name']}"
-                    if st.button(btn_label, key=f"btn_{f['fixture']['id']}", use_container_width=True):
-                            st.session_state['current_match_obj'] = f
-                            # Clear previous analysis if switching match
-                            if 'analysis_results' in st.session_state:
-                                del st.session_state['analysis_results']
-                            st.rerun()
+                        try:
+                            # Convert to CET (Europe/Budapest)
+                            match_dt = pd.to_datetime(f['fixture']['date'])
+                            if match_dt.tzinfo is None:
+                                match_dt = match_dt.tz_localize('UTC')
+                            match_dt_cet = match_dt.tz_convert('Europe/Budapest')
+                            match_time_str = match_dt_cet.strftime('%H:%M') # Only time is enough inside list
+                        except:
+                            match_time_str = "??"
+                        
+                        # Button for each match
+                        # home vs away (Time)
+                        btn_label = f"{match_time_str} | {f['teams']['home']['name']} - {f['teams']['away']['name']}"
+                        if st.button(btn_label, key=f"btn_{f['fixture']['id']}", use_container_width=True):
+                                st.session_state['current_match_obj'] = f
+                                # Clear previous analysis if switching match
+                                if 'analysis_results' in st.session_state:
+                                    del st.session_state['analysis_results']
+                                st.rerun()
 
 import json
 
