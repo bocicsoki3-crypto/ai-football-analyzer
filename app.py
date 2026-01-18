@@ -583,13 +583,48 @@ with tab1:
                         st.error("Nem sikerült értelmezni a Statisztikus válaszát.")
                         st.code(results['statistician'])
                         
-                with st.expander("🕵️ HÍRSZERZŐ JELENTÉSE (Tavily Nyers Adat)", expanded=True):
-                    st.write(results['scout'])
+                with st.expander("🕵️ HÍRSZERZŐ JELENTÉSE (Tavily Nyers Adat)", expanded=False):
+                    st.markdown("""
+                    <style>
+                    .scout-report {
+                        background-color: #262730;
+                        padding: 15px;
+                        border-radius: 5px;
+                        border-left: 4px solid #ff4b4b;
+                        font-size: 0.85rem;
+                        white-space: pre-wrap;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+                    st.markdown(f'<div class="scout-report">{results["scout"]}</div>', unsafe_allow_html=True)
             with col2:
                 with st.expander("🧠 TAKTIKUS JELENTÉSE (Groq)", expanded=True):
                     st.write(results['tactician'])
-                with st.expander("👔 A FŐNÖK DÖNTÉSE (Groq)", expanded=True):
-                    st.markdown(results['boss'])
+                with st.expander("👔 A FŐNÖK DÖNTÉSE (GPT-4o)", expanded=True):
+                    boss_res = results['boss']
+                    if isinstance(boss_res, dict):
+                        # Structured Display
+                        b_col1, b_col2 = st.columns(2)
+                        with b_col1:
+                            st.metric("🎯 Fő Tipp", boss_res.get('main_tip', 'N/A'), delta=boss_res.get('main_tip_confidence', ''))
+                        with b_col2:
+                            st.metric("⚽ Pontos Eredmény", boss_res.get('score_prediction', 'N/A'))
+                        
+                        st.markdown("##### 💎 Value Tipp")
+                        st.write(f"**{boss_res.get('value_tip', 'N/A')}** (@ {boss_res.get('value_tip_odds', 'N/A')})")
+                        
+                        st.markdown("##### 📝 Elemzés")
+                        st.info(boss_res.get('analysis', 'Nincs szöveges elemzés.'))
+                        
+                        # Extra stats if available
+                        extra_stats = []
+                        if 'btts_percent' in boss_res: extra_stats.append(f"BTTS: {boss_res['btts_percent']}")
+                        if 'over_2_5_percent' in boss_res: extra_stats.append(f"Over 2.5: {boss_res['over_2_5_percent']}")
+                        if extra_stats:
+                            st.caption(" | ".join(extra_stats))
+                    else:
+                        # Fallback for old string format
+                        st.markdown(boss_res)
             
             # Save to DB
             if st.button("💾 Eredmény mentése az Archívumba", use_container_width=True):

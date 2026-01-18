@@ -269,8 +269,11 @@ class AICommittee:
         ODDS: Calculate 'Fair Odds' (1/Probability). Is there Value? 
         
         LOGIC CHECK: Ensure Score Prediction matches the Tip (e.g. Under 2.5 implies max 2 goals). 
+
+        IMPORTANT: OUTPUT MUST BE IN HUNGARIAN LANGUAGE (Magyar).
+        All values in the JSON (analysis, main_tip, value_tip) MUST BE IN HUNGARIAN.
         
-        OUTPUT JSON ONLY: { "analysis": "Professional analysis mentioning Key Injuries, Motivation, and Math.", "score_prediction": "X-Y", "main_tip": "Best Bet", "main_tip_confidence": "XX%", "value_tip": "Value Bet", "value_tip_odds": "1.XX", "btts_percent": "XX%", "over_2_5_percent": "XX%" } """ 
+        OUTPUT JSON ONLY: { "analysis": "Professional analysis in HUNGARIAN...", "score_prediction": "X-Y", "main_tip": "Best Bet (Hungarian)", "main_tip_confidence": "XX%", "value_tip": "Value Bet (Hungarian)", "value_tip_odds": "1.XX", "btts_percent": "XX%", "over_2_5_percent": "XX%" } """ 
         
         try: 
             user_prompt = f""" 
