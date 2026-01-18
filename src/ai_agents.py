@@ -238,122 +238,96 @@ class AICommittee:
 
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
         """ 
-        Boss Agent: GRANDMASTER SZINTŰ ELEMZŐ + ODDS KALKULÁTOR. 
-        Figyelembe veszi: Matek + Pszichológia + Bíró + Időjárás + Value Betting. 
+        Boss Agent: OPENAI GPT-4o EDITION. 
+        A létező legokosabb modell + Logikai Kényszerítés (Logic Enforcer). 
         """ 
-        print("--- BOSS AGENT: GRANDMASTER ANALYSIS & ODDS START ---")
-        self._setup_clients()
+        import json 
+        import re 
+        import os 
+        from openai import OpenAI # Fontos: új kliens! 
+        print("--- BOSS AGENT: GPT-4o MASTER CLASS START ---") 
         
-        if not self.groq_client:
-            return {
-                "analysis": "CRITICAL ERROR: Groq API Key is missing.",
-                "score_prediction": "N/A",
-                "main_tip": "Error",
-                "value_tip": "Error"
-            }
-
+        # 1. A KLIENS INICIALIZÁLÁSA 
+        api_key = os.getenv("OPENAI_API_KEY") 
+        if not api_key: 
+            return {"analysis": "HIBA: Hiányzik az OPENAI_API_KEY az .env fájlból!", "main_tip": "HIBA"} 
+        
+        client = OpenAI(api_key=api_key) 
+        
+        # 2. A GRANDMASTER PROMPT (Pszichológia + Matek) 
         system_prompt = """ 
-        YOU ARE A GRANDMASTER FOOTBALL HANDICAPPER. YOUR GOAL IS PROFIT. 
+        YOU ARE THE WORLD'S BEST FOOTBALL PREDICTOR (GPT-4o). 
+        GOAL: PROFITABILITY. NO HALLUCINATIONS. 
+        PERFORM A 5-DIMENSIONAL ANALYSIS: 
         
-        PERFORM A 5-DIMENSIONAL ANALYSIS TO FIND THE "TRUTH" AND THE "VALUE": 
+        PSYCHOLOGY: Check News for Motivation, Injuries, Coach sacking. 
         
-        DIMENSION 1: PSYCHOLOGY & MOTIVATION (News/Scout Report) 
-        - IS THERE PRESSURE? (Title race, Relegation). 
-        - MORALE: Internal conflict? Coach sacked? 
-        - REFEREE: Check Ref stats in report. High card avg (>4.5)? -> High Volatility. 
-        - WEATHER: Extreme conditions? -> Favors Under/Draw. 
+        EXTERNALS: Referee (Cards?), Weather, Pitch. 
         
-        DIMENSION 2: SQUAD & TACTICS (Tactician Report) 
-        - INJURIES: If Key Scorer/Defender missing -> DEDUCT 15-20% from win chance. 
-        - FATIGUE: Did they play 3 days ago? -> Fade them (Bet Against). 
+        MATH: xG, Goals Scored/Conceded. 
         
-        DIMENSION 3: THE MATH (Stat Report) 
-        - Check xG, Form, and Goals Averages. 
-        - Do Stats confirm Psychology? -> STRONG BET. 
-        - Do Stats contradict Psychology? -> SKIP or CAUTIOUS BET. 
+        ODDS: Calculate 'Fair Odds' (1/Probability). Is there Value? 
         
-        DIMENSION 4: ODDS & VALUE (CRITICAL!) 
-        - Look for Odds in the input text. If found, compare with your probability. 
-        - IF NO ODDS FOUND: CALCULATE "FAIR ODDS" = 1 / (Your Probability %). 
-        - Example: If you think Home Win is 50%, Fair Odds = 2.00. 
-        - VALUE TIP RULE: Only suggest a Value Tip if your calculated probability is significantly higher than implied odds. 
+        LOGIC CHECK: Ensure Score Prediction matches the Tip (e.g. Under 2.5 implies max 2 goals). 
         
-        DIMENSION 5: THE DECISION 
-        - Combine all factors. Psychology overrides Stats. Value overrides "Sure Bets". 
+        OUTPUT JSON ONLY: { "analysis": "Professional analysis mentioning Key Injuries, Motivation, and Math.", "score_prediction": "X-Y", "main_tip": "Best Bet", "main_tip_confidence": "XX%", "value_tip": "Value Bet", "value_tip_odds": "1.XX", "btts_percent": "XX%", "over_2_5_percent": "XX%" } """ 
         
-        OUTPUT FORMAT (JSON ONLY, NO MARKDOWN): 
-        { 
-            "analysis": "Detailed Grandmaster analysis. Mention Ref, Weather, and why the Odds are good/bad.", 
-            "score_prediction": "e.g. 2-1", 
-            "main_tip": "The safest bet (High Win Rate)", 
-            "main_tip_confidence": "e.g. 75%", 
-            "value_tip": "The bet with best Profit Potential (e.g. BTTS or Away Win)", 
-            "value_tip_odds": "Estimate the Fair Odds (e.g. 2.10) or use real odds if found", 
-            "btts_percent": "e.g. 60%", 
-            "over_2_5_percent": "e.g. 55%" 
-        } 
-        """ 
-    
         try: 
-            # SAFE PROMPT CONSTRUCTION (No f-strings)
-            user_prompt_template = """ 
-            ANALYZE THE FULL CONTEXT FOR PROFIT: 
+            user_prompt = f""" 
+            ANALYZE THIS MATCH WITH PRECISION: 
             
-            [1. PSYCHOLOGY, ODDS, NEWS] 
-            __SCOUT_REPORT__ 
+            [NEWS & CONTEXT] 
+            {scout_report} 
             
-            [2. TACTICS & LINEUPS] 
-            __TACTICIAN_REPORT__ 
+            [TACTICS] 
+            {tactician_report} 
             
-            [3. STATISTICS & FORM] 
-            __STAT_REPORT__ 
+            [STATS] 
+            {stat_report} 
             
-            [4. MATCH DETAILS] 
-            __MATCH_DATA__ 
-            
-            FIND THE VALUE. CALCULATE FAIR ODDS IF MISSING. RETURN JSON ONLY. 
+            RETURN JSON ONLY. 
             """ 
-            
-            user_prompt = user_prompt_template.replace("__SCOUT_REPORT__", str(scout_report))
-            user_prompt = user_prompt.replace("__TACTICIAN_REPORT__", str(tactician_report))
-            user_prompt = user_prompt.replace("__STAT_REPORT__", str(statistician_report))
-            user_prompt = user_prompt.replace("__MATCH_DATA__", str(match_data))
-            
-            self.last_prompts['boss'] = user_prompt
-    
-            completion = self.groq_client.chat.completions.create( 
-                model="llama-3.3-70b-versatile", 
+            completion = client.chat.completions.create( 
+                model="gpt-4o", # A KIRÁLY KATEGÓRIA 
                 messages=[ 
                     {"role": "system", "content": system_prompt}, 
                     {"role": "user", "content": user_prompt} 
                 ], 
-                temperature=0.25, 
-                max_tokens=1500 
+                temperature=0.2, # Alacsony hőmérséklet a precizitásért 
+                response_format={"type": "json_object"} # GPT-4o garantálja a JSON-t! 
             ) 
-    
-            # --- JSON TISZTÍTÁS (Hogy ne omoljon össze) --- 
+            # --- 3. ADATFELDOLGOZÁS --- 
             raw_content = completion.choices[0].message.content 
-            print(f"DEBUG AI RESPONSE: {raw_content}") 
+            data = json.loads(raw_content) 
+            # --- 4. LOGIC ENFORCER (A RENDŐR) --- 
+            # Utólagos javítás, ha mégis ellentmondás lenne 
+            tip = data.get("main_tip", "").lower() 
+            score = data.get("score_prediction", "1-1") 
             
-            match = re.search(r'\{[\s\S]*\}', raw_content) 
-            if match: 
-                return json.loads(match.group(0)) 
-            else: 
-                raise ValueError("Nem található JSON válasz.") 
-    
+            # Gólok kinyerése 
+            try: 
+                nums = re.findall(r'\d+', score) 
+                hg, ag = int(nums[0]), int(nums[1]) 
+                total = hg + ag 
+            except: 
+                hg, ag, total = 1, 1, 2 
+            # Korrekciók 
+            if "under 2.5" in tip and total > 2: 
+                data["score_prediction"] = "1-1" # Kényszerített javítás 
+            if "over 2.5" in tip and total < 3: 
+                data["score_prediction"] = "2-1" # Kényszerített javítás 
+            if "home win" in tip and hg <= ag: 
+                data["score_prediction"] = "1-0" # Kényszerített javítás 
+                
+            return data 
         except Exception as e: 
-            # VÉSZHELYZETI MENTŐÖV (Hogy mindig legyen eredmény a képernyőn) 
-            print(f"AI ERROR: {e}") 
-            print(traceback.format_exc())
+            print(f"OPENAI ERROR: {e}") 
             return { 
-                "analysis": f"⚠️ TECHNIKAI HIBA (AI): {str(e)}. A rendszer a statisztikák alapján generált becslést mutat.", 
-                "score_prediction": "1-1 (Stat)", 
-                "main_tip": "Statisztikai Hazai/X", 
-                "main_tip_confidence": "N/A", 
-                "value_tip": "Nincs AI Value", 
-                "value_tip_odds": "0.00", 
-                "btts_percent": "50%", 
-                "over_2_5_percent": "50%" 
+                "analysis": f"Technikai hiba: {str(e)}. Statisztikai becslés következik.", 
+                "score_prediction": "1-1", 
+                "main_tip": "Nincs Adat", 
+                "value_tip": "Nincs Adat", 
+                "btts_percent": "50%" 
             }
 
     def run_prophet(self, match_data, home_team, away_team):
