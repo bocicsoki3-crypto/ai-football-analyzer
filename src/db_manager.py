@@ -30,6 +30,13 @@ class DBManager:
         conn = sqlite3.connect(self.db_path)
         c = conn.cursor()
         date_str = datetime.now().strftime("%Y-%m-%d")
+        
+        # Ensure predicted_result is stored as string (JSON if possible)
+        if isinstance(predicted_result, (dict, list)):
+            predicted_result = json.dumps(predicted_result)
+        else:
+            predicted_result = str(predicted_result)
+
         c.execute('''
             INSERT INTO predictions (date, home_team, away_team, full_analysis, predicted_result)
             VALUES (?, ?, ?, ?, ?)

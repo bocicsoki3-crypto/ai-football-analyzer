@@ -283,7 +283,7 @@ class AICommittee:
             {tactician_report} 
             
             [STATS] 
-            {stat_report} 
+            {statistician_report} 
             
             RETURN JSON ONLY. 
             """ 

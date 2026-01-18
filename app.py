@@ -422,15 +422,24 @@ with tab1:
             
             st.markdown("---")
             
-            # Extract Tips using Regex
-            boss_text = results['boss']
-            score_match = re.search(r'\*\*PONTOS VÉGEREDMÉNY TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
-            main_match = re.search(r'\*\*FŐ TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
-            value_match = re.search(r'\*\*VALUE TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
+            # Extract Tips (Support for both Dictionary and Legacy String)
+            boss_data = results['boss']
             
-            score_tip = score_match.group(1).strip() if score_match else "Nincs adat"
-            main_tip = main_match.group(1).strip() if main_match else "Nincs adat"
-            value_tip = value_match.group(1).strip() if value_match else "Nincs adat"
+            if isinstance(boss_data, dict):
+                # New GPT-4o JSON format
+                score_tip = boss_data.get("score_prediction", "Nincs adat")
+                main_tip = boss_data.get("main_tip", "Nincs adat")
+                value_tip = boss_data.get("value_tip", "Nincs adat")
+            else:
+                # Legacy String format with Regex
+                boss_text = str(boss_data)
+                score_match = re.search(r'\*\*PONTOS VÉGEREDMÉNY TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
+                main_match = re.search(r'\*\*FŐ TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
+                value_match = re.search(r'\*\*VALUE TIPP\*\*:\s*(.*)', boss_text, re.IGNORECASE)
+                
+                score_tip = score_match.group(1).strip() if score_match else "Nincs adat"
+                main_tip = main_match.group(1).strip() if main_match else "Nincs adat"
+                value_tip = value_match.group(1).strip() if value_match else "Nincs adat"
             
             # Display Big Metrics
             st.markdown("<h2 style='text-align: center;'>🏆 A Bizottság Döntése</h2>", unsafe_allow_html=True)
@@ -644,14 +653,25 @@ with tab3:
             
             # Tip Extraction (Simplified for display)
             tip_text = "Megnyitás..."
-            if row['predicted_result']:
-                # Try to extract score like in tab2
-                score_match = re.search(r'\*\*PONTOS VÉGEREDMÉNY TIPP\*\*:\s*(.*)', str(row['predicted_result']), re.IGNORECASE)
-                if score_match:
-                    tip_text = score_match.group(1).strip()
-                else:
-                    # Fallback: first 20 chars
-                    tip_text = str(row['predicted_result'])[:20] + "..."
+            pred_res = row['predicted_result']
+            if pred_res:
+                try:
+                    # Try parsing as JSON first (for new format)
+                    if isinstance(pred_res, str) and (pred_res.strip().startswith('{') or pred_res.strip().startswith('"')):
+                         pred_json = json.loads(pred_res)
+                         if isinstance(pred_json, dict):
+                            tip_text = pred_json.get("score_prediction", "Nincs adat")
+                         else:
+                            tip_text = str(pred_json)[:20]
+                    else:
+                         raise ValueError("Not JSON")
+                except:
+                    # Fallback to Regex
+                    score_match = re.search(r'\*\*PONTOS VÉGEREDMÉNY TIPP\*\*:\s*(.*)', str(pred_res), re.IGNORECASE)
+                    if score_match:
+                        tip_text = score_match.group(1).strip()
+                    else:
+                        tip_text = str(pred_res)[:20] + "..."
             
             c4.write(tip_text)
             
@@ -712,7 +732,14 @@ with tab3:
                         st.markdown("### Próféta")
                         st.markdown(full_analysis.get('prophet', 'Nincs adat'))
                     with at4:
-                        st.markdown(full_analysis.get('boss', 'Nincs adat'))
+                        boss_content = full_analysis.get('boss', 'Nincs adat')
+                        if isinstance(boss_content, dict):
+                            st.json(boss_content)
+                            if 'analysis' in boss_content:
+                                st.markdown("### 📝 Szöveges Elemzés")
+                                st.write(boss_content['analysis'])
+                        else:
+                            st.markdown(boss_content)
 
                 # 3. Edit/Update Section
                 st.markdown("### ✍️ Eredmény Adminisztráció")
