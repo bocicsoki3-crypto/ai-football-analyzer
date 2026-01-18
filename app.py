@@ -215,37 +215,43 @@ with st.sidebar:
                     return i
             return 999 # Non-priority leagues
 
-        # Group by League Key (Name + Country) to handle same league names in diff countries (rare but possible)
-        # Actually, API usually distinguishes. Let's group by League Name directly for the view.
-        
-        # 1. Get unique leagues with their fixtures
-        league_map = {}
+        # Group by Country -> League
+        country_map = {}
         for f in fixtures:
             l_name = f['league']['name']
             l_country = f['league']['country']
-            key = (l_name, l_country)
-            if key not in league_map:
-                league_map[key] = []
-            league_map[key].append(f)
             
-        # 2. Sort Leagues
-        # Sort keys based on priority score, then alphabetically
-        sorted_league_keys = sorted(
-            league_map.keys(), 
-            key=lambda k: (get_league_priority(k[0]), k[0])
-        )
+            if l_country not in country_map:
+                country_map[l_country] = {}
+            
+            if l_name not in country_map[l_country]:
+                country_map[l_country][l_name] = []
+            
+            country_map[l_country][l_name].append(f)
+            
+        # Sort Countries Alphabetically
+        sorted_countries = sorted(country_map.keys())
 
         st.markdown("### 🌍 Bajnokságok")
         
-        for l_name, l_country in sorted_league_keys:
-            league_fixtures = league_map[(l_name, l_country)]
+        for country in sorted_countries:
+            leagues_in_country = country_map[country]
             
-            # Format: "Premier League (England) - 5 meccs" or just "Premier League - 5 meccs" if Country is World
-            display_name = f"{l_name} ({l_country})" if l_country not in ["World", "Int"] else l_name
+            # Show Country Header
+            st.markdown(f"**{country}**")
             
-            # Expander for League (Collapsed by default as requested)
-            with st.expander(f"🏆 {display_name} ({len(league_fixtures)})", expanded=False):
-                for f in league_fixtures:
+            # Sort Leagues within Country by Priority
+            sorted_leagues = sorted(
+                leagues_in_country.keys(),
+                key=lambda l: (get_league_priority(l), l)
+            )
+            
+            for l_name in sorted_leagues:
+                league_fixtures = leagues_in_country[l_name]
+                
+                # Expander for League (Collapsed by default)
+                with st.expander(f"🏆 {l_name} ({len(league_fixtures)})", expanded=False):
+                    for f in league_fixtures:
                     try:
                         # Convert to CET (Europe/Budapest)
                         match_dt = pd.to_datetime(f['fixture']['date'])
