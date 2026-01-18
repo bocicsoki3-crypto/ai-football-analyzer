@@ -190,41 +190,81 @@ with st.sidebar:
     if 'fixtures' in st.session_state:
         fixtures = st.session_state['fixtures']
         
-        # Group by Country
-        countries = sorted(list(set([f['league']['country'] for f in fixtures])))
+        # --- League Priority Handling ---
+        # Define priority leagues (Hungarian names might be needed depending on API, but using standard English/API names)
+        # We will check partial matches for flexibility
+        PRIORITY_LEAGUES = [
+            "UEFA Champions League",
+            "UEFA Europa League",
+            "Premier League",
+            "La Liga",
+            "Bundesliga",
+            "Serie A",
+            "Ligue 1",
+            "OTP Bank Liga", # Hungarian NB I
+            "NB I",
+            "Eredivisie",
+            "Primeira Liga",
+            "Championship"
+        ]
+
+        def get_league_priority(league_name):
+            league_name_lower = league_name.lower()
+            for i, p_league in enumerate(PRIORITY_LEAGUES):
+                if p_league.lower() in league_name_lower:
+                    return i
+            return 999 # Non-priority leagues
+
+        # Group by League Key (Name + Country) to handle same league names in diff countries (rare but possible)
+        # Actually, API usually distinguishes. Let's group by League Name directly for the view.
         
-        st.markdown("### 🌍 Mérkőzések")
-        for country in countries:
-            country_fixtures = [f for f in fixtures if f['league']['country'] == country]
+        # 1. Get unique leagues with their fixtures
+        league_map = {}
+        for f in fixtures:
+            l_name = f['league']['name']
+            l_country = f['league']['country']
+            key = (l_name, l_country)
+            if key not in league_map:
+                league_map[key] = []
+            league_map[key].append(f)
             
-            # Expander for Country
-            with st.expander(f"{country} ({len(country_fixtures)})"):
-                # Group by League inside Country
-                leagues = sorted(list(set([f['league']['name'] for f in country_fixtures])))
-                
-                for league in leagues:
-                    st.markdown(f"**🏆 {league}**")
-                    league_fixtures = [f for f in country_fixtures if f['league']['name'] == league]
+        # 2. Sort Leagues
+        # Sort keys based on priority score, then alphabetically
+        sorted_league_keys = sorted(
+            league_map.keys(), 
+            key=lambda k: (get_league_priority(k[0]), k[0])
+        )
+
+        st.markdown("### 🌍 Bajnokságok")
+        
+        for l_name, l_country in sorted_league_keys:
+            league_fixtures = league_map[(l_name, l_country)]
+            
+            # Format: "Premier League (England) - 5 meccs" or just "Premier League - 5 meccs" if Country is World
+            display_name = f"{l_name} ({l_country})" if l_country not in ["World", "Int"] else l_name
+            
+            # Expander for League (Collapsed by default as requested)
+            with st.expander(f"🏆 {display_name} ({len(league_fixtures)})", expanded=False):
+                for f in league_fixtures:
+                    try:
+                        # Convert to CET (Europe/Budapest)
+                        match_dt = pd.to_datetime(f['fixture']['date'])
+                        if match_dt.tzinfo is None:
+                            match_dt = match_dt.tz_localize('UTC')
+                        match_dt_cet = match_dt.tz_convert('Europe/Budapest')
+                        match_time_str = match_dt_cet.strftime('%H:%M') # Only time is enough inside list
+                    except:
+                        match_time_str = "??"
                     
-                    for f in league_fixtures:
-                        try:
-                            # Convert to CET (Europe/Budapest)
-                            match_dt = pd.to_datetime(f['fixture']['date'])
-                            if match_dt.tzinfo is None:
-                                match_dt = match_dt.tz_localize('UTC')
-                            match_dt_cet = match_dt.tz_convert('Europe/Budapest')
-                            match_time_str = match_dt_cet.strftime('%Y.%m.%d. %H:%M')
-                        except:
-                            match_time_str = "??"
-                        
-                        # Button for each match
-                        btn_label = f"⏰ {match_time_str} | {f['teams']['home']['name']} vs {f['teams']['away']['name']}"
-                        if st.button(btn_label, key=f"btn_{f['fixture']['id']}", use_container_width=True):
-                             st.session_state['current_match_obj'] = f
-                             # Clear previous analysis if switching match
-                             if 'analysis_results' in st.session_state:
-                                 del st.session_state['analysis_results']
-                             st.rerun()
+                    # Button for each match
+                    # home vs away (Time)
+                    btn_label = f"{match_time_str} | {f['teams']['home']['name']} - {f['teams']['away']['name']}"
+                    if st.button(btn_label, key=f"btn_{f['fixture']['id']}", use_container_width=True):
+                            st.session_state['current_match_obj'] = f
+                            # Clear previous analysis if switching match
+                            if 'analysis_results' in st.session_state:
+                                del st.session_state['analysis_results']
+                            st.rerun()
 
 import json
 
