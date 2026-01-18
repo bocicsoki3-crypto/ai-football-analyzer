@@ -430,7 +430,7 @@ with tab1:
                     # 3. Run AI Committee Steps Manually for Progress
                     # Statistician
                     st.write("📈 A Statisztikus számolja az esélyeket (xG, Forma)...")
-                    stat_report = ai_committee.run_statistician(match_details)
+                    stat_report = ai_committee.run_statistician(home_name, away_name)
                     time.sleep(2) # Delay to avoid rate limits
                     
                     # Scout

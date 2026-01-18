@@ -1,3 +1,4 @@
+from src.tools import get_rapid_stats
 import os
 import time
 import re
@@ -24,97 +25,17 @@ class AICommittee:
     def get_last_prompts(self):
         return self.last_prompts
 
-    def run_statistician(self, match_data):
-        self._setup_clients()
-        
-        # Extract computed stats if available
-        comp_stats = match_data.get('computed_stats', {})
-        h_corn = comp_stats.get('home_team_corners', 'Nincs adat')
-        a_corn = comp_stats.get('away_team_corners', 'Nincs adat')
-        h_card = comp_stats.get('home_team_yellow_cards', 'Nincs adat')
-        a_card = comp_stats.get('away_team_yellow_cards', 'Nincs adat')
-        
-        # TEMPLATE DEFINITION (No f-string to avoid JSON conflict)
-        prompt_template = """
-        TE VAGY A STATISZTIKUS (AI Agent). A világ legjobb sportfogadási matematikusa.
-        
-        Adatok: __MATCH_DATA__
-        
-        KONKRÉT SZEZONBELI ÁTLAGOK (RapidAPI):
-        - Hazai Szöglet Átlag: __H_CORN__
-        - Vendég Szöglet Átlag: __A_CORN__
-        - Hazai Sárga Lap Átlag: __H_CARD__
-        - Vendég Sárga Lap Átlag: __A_CARD__
-        
-        SZIGORÚ UTASÍTÁS:
-        1. KERÜLD az általánosításokat (pl. "szoros meccs várható").
-        2. SZÁMSZERŰSÍTS: Minden állítást támassz alá konkrét számokkal (pl. "A hazai csapat xG mutatója az utolsó 3 meccsen 2.1, míg a vendégeké csak 0.8").
-        3. SÚLYOZOTT ELEMZÉS: A sérülteket és az eltiltottakat ne csak felsorold, hanem határozd meg a hiányuk számszerű hatását a csapat erejére.
-        4. TILOS ISMÉTLÉS: Tilos ugyanazt a százalékot adnod, mint egy sablon! Minden számot (BTTS, Over 2.5, Szögletek) a fenti KONKRÉT adatokból számolj ki újra!
-        
-        FELADAT:
-        Végezz mély statisztikai elemzést. Ne csak átlagolj, hanem súlyozz!
-        1. FORMÁK: A legutóbbi 5 meccs eredménye fontosabb, mint az egész szezon.
-        2. HAZAI/VENDÉG TELJESÍTMÉNY: Külön kezeld a Hazai csapat otthoni és a Vendég idegenbeli mutatóit.
-        3. POISSON ELOSZLÁS: Becsüld meg a várható gólokat (xG) a védelmi és támadási erők alapján.
-        
-        KÖTELEZŐ SZÁMÍTÁSOK (Valós adatokból):
-        - Szögletek: Ha az adatok szerint kevés a szöglet (pl. átlagok összege < 8), írj keveset! Ne hasalj be 9-et, ha a statisztika 4-et mutat!
-        - Lapok: (Hazai lap átlag + Vendég lap átlag + Bíró szigora ha van).
-        - BTTS (Mindkét csapat lő gólt): Konkrét képlet alapján! (Hazai otthoni gólszerzési % + Vendég idegenbeli gólszerzési %) / 2. NE HASALJ (pl. 58% helyett 58.4%)!
-        - Over 2.5: A várható gólok (xG) összegéből számolj Poisson eloszlással pontos %-ot!
-        
-        KIMENETI FORMÁTUM (Kizárólag érvényes JSON):
-        {
-            "home_win_percent": "XX%",
-            "draw_percent": "XX%",
-            "away_win_percent": "XX%",
-            "expected_corners": "Over/Under X.5 (pl. 'Over 9.5' - Indoklás: Hazai 6.5 + Vendég 4.0)",
-            "expected_cards": "Over/Under X.5 (pl. 'Over 4.5' - Indoklás: Parázs meccs várható)",
-            "btts_percent": "XX.X%",
-            "over_2_5_percent": "XX.X%",
-            "analysis": "Tömör, profi elemzés konkrét számokkal."
-        }
-        
-        Csak a JSON objektumot add vissza!
-        """
-        
-        # Safe Injection
-        prompt = prompt_template.replace("__MATCH_DATA__", json.dumps(match_data))
-        prompt = prompt.replace("__H_CORN__", str(h_corn))
-        prompt = prompt.replace("__A_CORN__", str(a_corn))
-        prompt = prompt.replace("__H_CARD__", str(h_card))
-        prompt = prompt.replace("__A_CARD__", str(a_card))
-        
-        self.last_prompts['statistician'] = prompt
-
-        try:
-            # Prefer Groq for better instruction following
-            if self.groq_client:
-                 completion = self.groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.7
-                    )
-                 content = completion.choices[0].message.content
-                 
-                 # Robust JSON Extraction (Regex)
-                 try:
-                    json_match = re.search(r'{.*}', content, re.DOTALL)
-                    if json_match:
-                        return json_match.group(0)
-                    else:
-                        # Fallback if no brackets found (unlikely but possible)
-                        return content.strip()
-                 except:
-                    return content.strip()
-            
-            return '{"error": "Nincs Groq kliens konfigurálva."}'
-
-        except Exception as e:
-            print(f"Hiba a Statisztikusnál: {str(e)}")
-            print(traceback.format_exc()) # Print full traceback
-            return f'{{"error": "Hiba a Statisztikusnál: {str(e)}"}}'
+    def run_statistician(self, home_team, away_team):
+        """ 
+        Statistician Agent: RAPIDAPI VERSION. 
+        Közvetlenül az API-ból kéri le a tényeket, nem AI generálja. 
+        """ 
+        print(f"--- STATISTICIAN: Fetching RapidAPI data for {home_team} vs {away_team} ---") 
+        try: 
+            # Itt hívjuk meg a Tools-ban lévő függvényt! 
+            return get_rapid_stats(home_team, away_team) 
+        except Exception as e: 
+            return f"Error fetching RapidAPI stats: {str(e)}"
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None, match_date=None):
         """
@@ -404,27 +325,28 @@ class AICommittee:
             return {"recommendation": "No Value"}
 
     def analyze_match(self, match_data, home_team_name, away_team_name, lessons=None):
-        # 1. Step: Statistician
-        stat_report = self.run_statistician(match_data)
         
-        # 2. Step: Scout
-        injuries = match_data.get('injuries', [])
-        h2h = match_data.get('h2h', [])
-        scout_report = self.run_scout(home_team_name, away_team_name, injuries, h2h)
+        # 1. Step: Statistician (MOST MÁR A NEVEKET KAPJA, NEM A MATCH_DATA-T) 
+        stat_report = self.run_statistician(home_team_name, away_team_name) 
         
-        # 3. Step: Tactician
-        tactician_report = self.run_tactician(home_team_name, away_team_name)
+        # 2. Step: Scout 
+        injuries = match_data.get('injuries', []) 
+        h2h = match_data.get('h2h', []) 
+        scout_report = self.run_scout(home_team_name, away_team_name, injuries, h2h) 
         
-        # 4. Step: The Prophet (Value Hunter)
-        prophet_report = self.run_prophet(stat_report, scout_report, tactician_report, match_data)
+        # 3. Step: Tactician 
+        tactician_report = self.run_tactician(home_team_name, away_team_name) 
         
-        # 5. Step: The Boss
-        final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons, prophet_report)
+        # 4. Step: The Prophet (Value Hunter) 
+        prophet_report = self.run_prophet(stat_report, scout_report, tactician_report, match_data) 
         
-        return {
-            "statistician": stat_report,
-            "scout": scout_report,
-            "tactician": tactician_report,
-            "prophet": prophet_report,
-            "boss": final_verdict
+        # 5. Step: The Boss 
+        final_verdict = self.run_boss(stat_report, scout_report, tactician_report, match_data, lessons, prophet_report) 
+        
+        return { 
+            "statistician": stat_report, 
+            "scout": scout_report, 
+            "tactician": tactician_report, 
+            "prophet": prophet_report, 
+            "boss": final_verdict 
         }
