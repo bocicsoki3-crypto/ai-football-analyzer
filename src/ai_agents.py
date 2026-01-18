@@ -5,17 +5,12 @@ import json
 import traceback
 from groq import Groq
 from tavily import TavilyClient
-from mistralai import Mistral
-import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 from datetime import datetime
 
 class AICommittee:
     def __init__(self):
         self.groq_client = None
         self.tavily_client = None
-        self.mistral_client = None
-        self.gemini_model = None
         self.last_prompts = {}
     
     def _setup_clients(self):
@@ -25,44 +20,6 @@ class AICommittee:
         # Initialize Tavily
         if not self.tavily_client and os.environ.get("TAVILY_API_KEY"):
             self.tavily_client = TavilyClient(api_key=os.environ["TAVILY_API_KEY"])
-        # Initialize Mistral
-        if not self.mistral_client and os.environ.get("MISTRAL_API_KEY"):
-            self.mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
-        # Initialize Gemini
-        if os.environ.get("GOOGLE_API_KEY"):
-            genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-            # A list_models() alapjan a legstabilabb elerheto verzio:
-            self.gemini_model = genai.GenerativeModel('gemini-2.0-flash')
-
-    def _generate_with_retry(self, prompt):
-        """
-        Executes Gemini generation with Robust Retry logic for 429 errors.
-        Retries up to 5 times with increasing delay.
-        """
-        max_retries = 5
-        wait_time = 30 # Kezdésnek 30 másodperc
-
-        last_error = None
-
-        for attempt in range(max_retries):
-            try:
-                # Próbáljuk meg lekérni az adatot
-                response = self.gemini_model.generate_content(prompt)
-                return response.text
-            except (ResourceExhausted, ServiceUnavailable) as e:
-                # Ha 429-es hibát kapunk (Túl gyorsak vagyunk)
-                print(f"⚠️ Google API Limit elérve! Várakozás {wait_time} másodpercig... (Próbálkozás: {attempt+1}/{max_retries})")
-                last_error = e
-                time.sleep(wait_time)
-                wait_time += 10 # Növeljük a várakozási időt minden hiba után
-            except Exception as e:
-                print(f"Egyéb hiba történt: {e}")
-                last_error = e
-                break
-        
-        # Ha minden próbálkozás sikertelen, adjunk vissza részletes hibát
-        error_details = f"{str(last_error)}\n{traceback.format_exc()}" if last_error else "Ismeretlen hiba"
-        return f"Hiba: Nem sikerült lekérni az adatot 5 próbálkozás után sem.\n\nTechnikai részletek:\n{error_details}"
 
     def get_last_prompts(self):
         return self.last_prompts

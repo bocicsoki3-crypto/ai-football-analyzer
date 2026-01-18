@@ -1,10 +1,7 @@
 streamlit
 requests
 pandas
-google-generativeai
 groq
 python-dotenv
-ollama
 tavily-python
-mistralai
 openai
