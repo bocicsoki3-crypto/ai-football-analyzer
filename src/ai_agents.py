@@ -304,7 +304,11 @@ class AICommittee:
         1. LISTEN TO THE PROPHET: If the Prophet spots a tactical mismatch (e.g. Away Win), and Stats allow it, GO FOR IT. 
         2. CHECK NEWS: Injuries/Suspensions are critical. 
         3. APPLY LESSONS: Use the memory above to avoid past errors.
-        4. LOGIC CHECK: 
+        4. NO BET POLICY (CRITICAL):
+           - If data is missing (e.g. unknown injuries, "Nincs adat" for xG), OUTPUT "NO BET".
+           - If your confidence in the winner/goals is < 70%, OUTPUT "NO BET".
+           - If "NO BET", set "main_tip" to "NO BET (Kihagyva)" and explain why in "analysis".
+        5. LOGIC CHECK: 
            - If predicting 'Under 2.5', Score MUST be max 2 goals (1-0, 0-1, 1-1, 2-0, 0-2). 
            - If predicting 'Away Win', Score MUST show Away > Home (0-1, 1-2, etc.). 
         
@@ -314,8 +318,8 @@ class AICommittee:
         OUTPUT JSON ONLY: 
         {{ 
             "analysis": "Detailed reasoning including Tactics, Stats, and LESSONS learned (Hungarian).", 
-            "score_prediction": "X-Y", 
-            "main_tip": "The Winner or Goals prediction (Hungarian)", 
+            "score_prediction": "X-Y (or 'SKIP' if NO BET)", 
+            "main_tip": "The Winner/Goals prediction OR 'NO BET' (Hungarian)", 
             "main_tip_confidence": "XX%", 
             "value_tip": "The Prophet's insight or High Odds tip (Hungarian)", 
             "value_tip_odds": "Decimal Odds", 
@@ -348,6 +352,12 @@ class AICommittee:
             # --- LOGIC ENFORCER (A RENDŐR - Utólagos javítás) --- 
             # Ez garantálja a Quality-t: SOHA nem lesz ellentmondás. 
             tip = data.get("main_tip", "").lower() 
+            
+            # Skip logic enforcement if NO BET
+            if "no bet" in tip or "kihagyva" in tip:
+                data["score_prediction"] = "SKIP"
+                return data
+
             score = data.get("score_prediction", "1-1") 
             
             try: 
@@ -375,7 +385,7 @@ class AICommittee:
             return { 
                 "analysis": f"Technikai hiba: {str(e)}. Statisztikai becslés következik.", 
                 "score_prediction": "1-1", 
-                "main_tip": "Nincs Adat", 
+                "main_tip": "NO BET (Error)", 
                 "value_tip": "Nincs Adat", 
                 "btts_percent": "50%" 
             }
