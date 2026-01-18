@@ -160,81 +160,97 @@ class AICommittee:
             return f'{{"error": "Hiba a Statisztikusnál: {str(e)}"}}'
 
     def run_scout(self, home_team, away_team, injuries, h2h, referee=None, venue=None, match_date=None):
+        """
+        Scout Agent: Keres, majd GPT-4o-val KISZŰRI a lényeget (Bíró, Időjárás, Sérültek).
+        """
         self._setup_clients()
+        import os
+        from openai import OpenAI
         
+        # 1. TAVILY KERESÉS (Nyers adatok gyűjtése)
         search_context = ""
-        sources_used = []
-        
-        # Tavily Search Integration
         if self.tavily_client:
             try:
-                # Use current date if not provided
                 if not match_date:
                     match_date = datetime.now().strftime("%Y-%m-%d")
-
-                # Kiterjesztett keresés: Angol nyelven a jobb találatokért
-                query = f"{home_team} vs {away_team} preview injuries lineup news {match_date} site:fbref.com OR site:whoscored.com"
                 
-                # Max results 5-re csökkentve a token limit miatt
+                # Bővített lekérdezés: Bíró, Időjárás, Kezdőcsapatok
+                query = f"{home_team} vs {away_team} referee weather injuries lineups news {match_date} site:fbref.com OR site:whoscored.com OR site:sportsmole.co.uk"
+                
                 search_result = self.tavily_client.search(query, search_depth="advanced", max_results=5)
                 
                 context_parts = []
                 if 'results' in search_result:
                     for res in search_result['results']:
-                        # Minimális szűrés: Csak a tartalom első 1000 karaktere
-                        content = res.get('content', '')[:1000]
-                        context_parts.append(f"Forrás: {res['url']}\nTartalom: {content}...")
-                        sources_used.append(res['url'])
+                        content = res.get('content', '')[:1500] # Több tartalom a GPT-4o-nak
+                        context_parts.append(f"SOURCE: {res['url']}\nCONTENT: {content}...")
                 
                 search_context = "\n\n".join(context_parts)
             except Exception as e:
-                print(f"Hiba a Tavily keresésnél: {str(e)}")
-                print(traceback.format_exc())
-                search_context = f"Hiba a Tavily keresésnél: {str(e)}"
+                print(f"Tavily Error: {e}")
+                search_context = f"Hiba a Tavily keresésnél: {e}"
+        else:
+             return "Nincs Tavily API kulcs."
 
         if not search_context:
-            return "Nincs elérhető online adat (Tavily)."
-            
-        # KÖZVETLEN VISSZATÉRÉS NYERS ADATTAL (AI feldolgozás nélkül)
-        # Így spórolunk a Gemini tokenekkel és kerüljük a 429-es hibát.
-        return f"*** TAVILY NYERS ADATOK (AI Összefoglaló Nélkül) ***\n\n{search_context}"
+            return "Nem találtam friss híreket a meccsről."
 
-    def run_tactician(self, match_data):
-        self._setup_clients()
-        if not self.groq_client:
-            return "Groq API Key hiányzik."
-            
-        # TEMPLATE DEFINITION (No f-string!)
-        prompt_template = """
-        TE VAGY A TAKTIKUS (Groq). Egy labdarúgó edző.
+        # 2. GPT-4o SZŰRÉS (Adatbányászat)
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key: return search_context # Fallback ha nincs OpenAI kulcs
         
-        Adatok: __MATCH_DATA__
+        client = OpenAI(api_key=api_key)
         
-        FELADAT:
-        Vizualizáld a mérkőzést a számok alapján!
-        1. LABDABIRTOKLÁS: Ki fogja dominálni a játékot? (Pl. Hazai passzpontosság 88% -> Dominancia várható).
-        2. KONTRAJÁTÉK: A vendégcsapat veszélyes kontrákból?
-        3. VÉDEKEZÉS: Magasan védekeznek vagy buszt tolnak a kapu elé?
+        system_prompt = """
+        You are a Football Scout. 
+        TASK: Extract specific details from the news text provided.
         
-        Írj le egy forgatókönyvet arról, hogyan fog kinézni a játék képe a pályán!
+        EXTRACT THESE 4 POINTS CONCISELY:
+        1. REFEREE: Name & Stats (Strict? Cards per game?).
+        2. WEATHER: Forecast for match time (Rain? Wind? Temp?).
+        3. INJURIES: Key players missing (Home vs Away).
+        4. LINEUPS: Confirmed or Expected starting XI changes.
+        
+        Output must be clean and factual.
         """
         
-        # Safe Injection
-        prompt = prompt_template.replace("__MATCH_DATA__", json.dumps(match_data))
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"KNOWN DATA (API):\nReferee: {referee}\nVenue: {venue}\nInjuries (API): {injuries}\n\nRAW SEARCH RESULTS:\n{search_context}"}
+                ],
+                temperature=0.3
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Hiba a Scout GPT-4o feldolgozásnál: {e}\n\nNyers adatok:\n{search_context}"
+
+    # --- UPGRADED TACTICIAN AGENT (GPT-4o Powered) ---
+    def run_tactician(self, home_team, away_team):
+        """ 
+        Tactician Agent: Stílus elemzés GPT-4o-val. 
+        """ 
+        import os 
+        from openai import OpenAI
         
-        self.last_prompts['tactician'] = prompt
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key: return "No tactical analysis."
+        
+        client = OpenAI(api_key=api_key)
         
         try:
-            completion = self.groq_client.chat.completions.create(
-                model="llama-3.3-70b-versatile", # Or mix models
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7
-            )
-            return completion.choices[0].message.content
+            response = client.chat.completions.create( 
+                model="gpt-4o", 
+                messages=[ 
+                    {"role": "system", "content": "You are a Tactical Analyst. Analyze the likely match dynamic based on team names. (e.g. Guardiola vs Klopp style). Predict who dominates possession."}, 
+                    {"role": "user", "content": f"Analyze tactical matchup: {home_team} vs {away_team}"} 
+                ] 
+            ) 
+            return response.choices[0].message.content
         except Exception as e:
-            print(f"Hiba a Taktikusnál: {str(e)}")
-            print(traceback.format_exc())
-            return f"Hiba a Taktikusnál: {str(e)}"
+            return f"Tactical Analysis Error: {e}"
 
     def run_boss(self, statistician_report, scout_report, tactician_report, match_data, lessons=None):
         """ 
@@ -383,7 +399,7 @@ class AICommittee:
         scout_report = self.run_scout(home_team_name, away_team_name, injuries, h2h)
         
         # 3. Step: Tactician
-        tactician_report = self.run_tactician(match_data)
+        tactician_report = self.run_tactician(home_team_name, away_team_name)
         
         # 4. Step: The Prophet (Value Hunter)
         prophet_report = self.run_prophet(stat_report, scout_report, match_data)
