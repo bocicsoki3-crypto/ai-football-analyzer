@@ -205,13 +205,13 @@ class AICommittee:
         You are a Football Scout. 
         TASK: Extract specific details from the news text provided.
         
-        EXTRACT THESE 4 POINTS CONCISELY:
-        1. REFEREE: Name & Stats (Strict? Cards per game?).
-        2. WEATHER: Forecast for match time (Rain? Wind? Temp?).
-        3. INJURIES: Key players missing (Home vs Away).
-        4. LINEUPS: Confirmed or Expected starting XI changes.
+        EXTRACT THESE 4 POINTS CONCISELY IN HUNGARIAN (MAGYARUL):
+        1. REFEREE (BÍRÓ): Name & Stats (Strict? Cards per game?).
+        2. WEATHER (IDŐJÁRÁS): Forecast for match time (Rain? Wind? Temp?).
+        3. INJURIES (SÉRÜLTEK): Key players missing (Home vs Away).
+        4. LINEUPS (KEZDŐK): Confirmed or Expected starting XI changes.
         
-        Output must be clean and factual.
+        Output must be clean and factual in HUNGARIAN.
         """
         
         try:
@@ -244,8 +244,8 @@ class AICommittee:
             response = client.chat.completions.create( 
                 model="gpt-4o", 
                 messages=[ 
-                    {"role": "system", "content": "You are a Tactical Analyst. Analyze the likely match dynamic based on team names. (e.g. Guardiola vs Klopp style). Predict who dominates possession."}, 
-                    {"role": "user", "content": f"Analyze tactical matchup: {home_team} vs {away_team}"} 
+                    {"role": "system", "content": "You are a Tactical Analyst. Analyze the likely match dynamic based on team names. (e.g. Guardiola vs Klopp style). Predict who dominates possession. OUTPUT LANGUAGE: HUNGARIAN (MAGYAR)."}, 
+                    {"role": "user", "content": f"Analyze tactical matchup in HUNGARIAN: {home_team} vs {away_team}"} 
                 ] 
             ) 
             return response.choices[0].message.content
@@ -365,15 +365,17 @@ class AICommittee:
         
         system_prompt = """ YOU ARE THE "PROPHET". YOU FIND VALUE WHERE OTHERS DON'T. IGNORE THE FAVORITES. LOOK FOR THE UPSET OR THE HIGH ODDS. 
         
-        ANALYZE FOR VALUE: 
+        ANALYZE FOR VALUE IN HUNGARIAN (MAGYARUL): 
         
         Is the underdog motivated? 
         
         Is the favorite team tired or missing players? 
         
-        Are the odds for BTTS or Over 2.5 too high? 
+        Are the odds for BTTS or Over 2.5 too high?
+
+        IMPORTANT: PREDICT A LIKELY EXACT SCORE TO HELP THE BOSS.
         
-        OUTPUT JSON ONLY: { "analysis": "Brief reasoning for the risky/value bet.", "recommendation": "e.g. Home Win (Risky) or BTTS", "confidence": "Medium/High", "estimated_odds": "e.g. 2.40" } """ 
+        OUTPUT JSON ONLY: { "analysis": "Brief reasoning for the risky/value bet in HUNGARIAN.", "recommendation": "e.g. Home Win (Risky) or BTTS (in Hungarian)", "likely_score_prediction": "X-Y", "confidence": "Medium/High", "estimated_odds": "e.g. 2.40" } """ 
         
         try: 
             completion = client.chat.completions.create( 

@@ -159,7 +159,7 @@ if not check_password():
 
 # Initialize modules
 @st.cache_resource
-def get_managers(version=8):
+def get_managers(version=9):
     return DataManager(), AICommittee(), DBManager()
 
 data_manager, ai_committee, db_manager = get_managers()
@@ -237,20 +237,26 @@ with st.sidebar:
         for country in sorted_countries:
             leagues_in_country = country_map[country]
             
-            # Show Country Header
-            st.markdown(f"**{country}**")
-            
-            # Sort Leagues within Country by Priority
-            sorted_leagues = sorted(
-                leagues_in_country.keys(),
-                key=lambda l: (get_league_priority(l), l)
-            )
-            
-            for l_name in sorted_leagues:
-                league_fixtures = leagues_in_country[l_name]
+            # Country Expander (Collapsed by default as requested)
+            with st.expander(f"🏳️ {country}", expanded=False):
                 
-                # Expander for League (Collapsed by default)
-                with st.expander(f"🏆 {l_name} ({len(league_fixtures)})", expanded=False):
+                # Sort Leagues within Country by Priority
+                sorted_leagues = sorted(
+                    leagues_in_country.keys(),
+                    key=lambda l: (get_league_priority(l), l)
+                )
+                
+                for l_name in sorted_leagues:
+                    league_fixtures = leagues_in_country[l_name]
+                    
+                    # Nested Expander for League (Also Collapsed)
+                    # Note: Streamlit doesn't support nested expanders perfectly in UI, 
+                    # but we can use markdown headers or just list them.
+                    # Since users want hierarchy: Country -> League -> Match
+                    # Let's use a subheader or bold text for League inside Country Expander
+                    
+                    st.markdown(f"**🏆 {l_name}**")
+                    
                     for f in league_fixtures:
                         try:
                             # Convert to CET (Europe/Budapest)
