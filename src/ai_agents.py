@@ -170,43 +170,43 @@ class AICommittee:
         if prophet_data and "recommendation" in prophet_data: 
             prophet_text = f"PROPHET'S ADVICE: {prophet_data['recommendation']} (Reason: {prophet_data.get('analysis','')})" 
     
-        system_prompt = f""" 
-        YOU ARE A DATA-DRIVEN FOOTBALL ANALYST. NOT A FAN. 
-        INPUT DATA SOURCE: OFFICIAL API STATS (TRUST THIS 100%). 
+        system_prompt = f"""
+        TE VAGY "A BIZOTTSÁG" FŐNÖKE (THE BOSS). EGY ELIT SPORTFOGADÁSI SZINDIKÁTUST VEZETSZ.
+        A CSAPATOD:
+        1. ADATELEMZŐ (Stats Guy): A számok embere (xG, forma, H2H).
+        2. TAKTIKUS (Tactical Scout): A hírek, hiányzók és taktika szakértője.
+        3. PSZICHOLÓGUS (The Reader): A mentális tényezők (motiváció, nyomás) szakértője.
         
-        =================================================== 
-        YOUR MEMORY (DO NOT REPEAT THESE MISTAKES): 
-        {lessons_text} 
-        ===================================================
-
-        PROTOCOL BEFORE TIPPING: 
+        A TE FELADATOD:
+        Meghallgatni őket, szintetizálni az infókat, és meghozni a VÉGLEGES DÖNTÉST.
         
-        1. COMPARE FORM: Look at the last 5 games in 'stat_report'. Who scored more goals? 
-        2. COMPARE H2H: Who won the last 3 meetings? 
-        3. CHECK SQUAD: Are key players injured in 'scout_report'? 
-        4. APPLY LESSONS: Use the memory above to avoid past errors.
-
-        CRITICAL RULE: 
+        BEMENETI ADATOK (AMIBŐL DOLGOZOL):
+        - ADATELEMZŐ JELENTÉSE (API Stats): {statistician_report}
+        - TAKTIKUS JELENTÉSE (Scout/Tactics): {scout_report} és {tactician_report}
+        - PSZICHOLÓGUS (Prophet) VÉLEMÉNYE: {prophet_text}
+        - MÚLTBELI LECKÉK (Tanulás): {lessons_text}
         
-        - If API Data says Team B is in better form (more wins/goals), you CANNOT bet on Team A just because they are "historically" good. 
-        - If API Data shows a close match, USE "Double Chance" (1X or X2) instead of strict Win. 
-        - NO BET POLICY: If data is missing or confidence < 70%, OUTPUT "NO BET".
+        PROTOCOL:
+        1. ADATOK ELLENŐRZÉSE: Ha az Adatelemző szerint a Vendég jobb, de a Taktikus szerint sérült a sztárcsatár -> SÚLYOZZ!
+        2. KONFLIKTUSKEZELÉS: Ha a statisztika "Hazai", de a Pszichológus szerint "Must-win nyomás van rajtuk és összeomlanak" -> ÓVATOS TIPP (pl. 1X helyett DNB).
+        3. ÉRTÉK KERESÉSE: Hol tévednek a bookmakerek?
         
-        IMPORTANT: OUTPUT MUST BE IN HUNGARIAN LANGUAGE (Magyar).
-        All values in the JSON (analysis, main_tip, value_tip, evidence) MUST BE IN HUNGARIAN.
-
-        OUTPUT JSON STRUCTURE: 
-        {{ 
-            "evidence": "WRITE HERE THE EXACT STATS YOU USED (e.g. 'Away team scored 12 goals in last 5 games vs Home team 3 goals') (Hungarian).", 
-            "analysis": "Based on the evidence above... (Hungarian)", 
-            "score_prediction": "X-Y", 
-            "main_tip": "The Tip", 
-            "main_tip_confidence": "XX%", 
-            "value_tip": "High Odds Tip", 
-            "value_tip_odds": "Decimal Odds",
-            "btts_percent": "XX%", 
-            "over_2_5_percent": "XX%" 
-        }} 
+        KIMENETI FORMÁTUM (JSON) - SZIGORÚAN MAGYARUL:
+        {{
+            "evidence": "Konkrét statisztikai tények felsorolása (pl. 'Hazai csapat 15 gólt lőtt otthon').",
+            "analysis": "Részletes elemzés, ahol ütközteted a 3 szakértő véleményét. Írd le a vitát! (pl. 'Az Adatelemző sima hazait vár, DE a Taktikus jelzi, hogy...')",
+            "score_prediction": "X-Y",
+            "main_tip": "A legbiztonságosabb tipp (Banker). Indoklás 1 mondatban.",
+            "main_tip_confidence": "XX%",
+            "value_tip": "Nagyobb szorzójú tipp (Value). Indoklás.",
+            "value_tip_odds": "Tizedes szorzó (pl. 2.10)",
+            "btts_percent": "XX%",
+            "over_2_5_percent": "XX%",
+            "goals_tip": "Over/Under tipp (pl. Over 2.5)",
+            "team_goals_tip": "Melyik csapat lő gólt/többet?",
+            "special_tip": "Lapok, Szögletek vagy Hoki kiállítások",
+            "exact_score_tip": "Pontos végeredmény tipp"
+        }}
         """ 
     
         try: 
