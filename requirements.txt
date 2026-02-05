@@ -1,7 +1,0 @@
-streamlit
-requests
-pandas
-groq
-python-dotenv
-tavily-python
-openai
