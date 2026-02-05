@@ -1,13 +1,16 @@
 import requests
-import os
-import pypdf
 import datetime
-from .config import LEAGUE_IDS
+import os
+import streamlit as st
 
+@st.cache_data(ttl=3600) # Cache for 1 hour
 def get_todays_matches(league_name):
     """
     Fetches today's matches for a specific league using RapidAPI.
+    Cached for 1 hour to prevent API quota exhaustion.
     """
+    from src.config import LEAGUE_IDS # Import here to avoid circular dependency if any
+
     api_key = os.getenv("RAPIDAPI_KEY")
     if not api_key:
         return []

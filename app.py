@@ -40,29 +40,31 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Sidebar - Pinned Leagues
-st.sidebar.title("📌 Pinned Leagues")
+# Sidebar - League Selection (Dropdown to save API calls)
+st.sidebar.title("📌 Bajnokságok")
 
 # Session state to track selected match
 if 'selected_match' not in st.session_state:
     st.session_state.selected_match = None
 
-# Sidebar Logic
-for league_name in LEAGUE_IDS.keys():
-    # Expander for each league (closed by default)
-    with st.sidebar.expander(f"{LEAGUE_EMOJIS.get(league_name, '⚽')} {league_name}", expanded=False):
-        # Fetch matches only when expanded (lazy loading could be better, but Streamlit reruns on expand)
-        # To avoid API spam, we might want to cache this or just load.
-        # For this version, we call the function.
-        matches = get_todays_matches(league_name)
-        
-        if matches:
-            for match in matches:
-                btn_label = f"{match['home']} vs {match['away']} ({match['time']})"
-                if st.button(btn_label, key=match['id']):
-                    st.session_state.selected_match = match
-        else:
-            st.write("No matches today.")
+# 1. Select League
+league_names = list(LEAGUE_IDS.keys())
+selected_league = st.sidebar.selectbox("Válassz bajnokságot:", league_names)
+
+# 2. Fetch matches for SELECTED league only
+if selected_league:
+    matches = get_todays_matches(selected_league)
+    
+    st.sidebar.markdown(f"**{LEAGUE_EMOJIS.get(selected_league, '⚽')} {selected_league}**")
+    
+    if matches:
+        for match in matches:
+            btn_label = f"{match['home']} vs {match['away']} ({match['time']})"
+            # Use a unique key combining league and match ID
+            if st.sidebar.button(btn_label, key=f"{selected_league}_{match['id']}"):
+                st.session_state.selected_match = match
+    else:
+        st.sidebar.info("Ma nincs meccs ebben a ligában.")
 
 # Main Content
 st.title("🤖 GPT-4o Football Analyst")
