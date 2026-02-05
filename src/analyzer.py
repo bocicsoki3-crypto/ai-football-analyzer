@@ -2,9 +2,9 @@ import os
 import json
 from openai import OpenAI
 
-def analyze_match_with_gpt4(pdf_text, match_name):
+def analyze_match_with_gpt4(pdf_text, match_name, rapid_stats=None):
     """
-    Sends PDF text to GPT-4o for analysis and returns structured JSON.
+    Sends PDF text and RapidAPI stats to GPT-4o for analysis.
     """
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -14,10 +14,16 @@ def analyze_match_with_gpt4(pdf_text, match_name):
 
     system_prompt = """
     You are an elite sports betting analyst using GPT-4o. 
-    Your task is to analyze the provided match statistics (from a PDF) and generate high-accuracy predictions.
+    Your task is to analyze the provided match statistics (Official Data + PDF Context) and generate high-accuracy predictions.
+    
+    DATA SOURCES:
+    1. OFFICIAL RAPIDAPI STATS (Form, H2H, Probabilities) - High Reliability
+    2. PDF DOCUMENT (Scout Report / News) - Contextual Info
+    
+    If RapidAPI stats contradict the PDF, trust the RapidAPI stats for raw numbers (goals, results).
     
     MATCH CONTEXT:
-    - Analyze the raw stats provided in the text.
+    - Analyze the raw stats provided.
     - Focus on: xG, H2H, recent form, goals scored/conceded.
     
     REQUIRED OUTPUT FORMAT (JSON ONLY):
@@ -44,7 +50,10 @@ def analyze_match_with_gpt4(pdf_text, match_name):
     user_prompt = f"""
     MATCH: {match_name}
     
-    STATISTICAL DATA (FROM PDF):
+    OFFICIAL DATA (RAPIDAPI):
+    {rapid_stats if rapid_stats else "No Official Data Available"}
+    
+    ADDITIONAL CONTEXT (PDF):
     {pdf_text[:10000]}  # Limit text length to avoid token limits if PDF is huge
     
     Analyze this data and provide the JSON output sorted by confidence.

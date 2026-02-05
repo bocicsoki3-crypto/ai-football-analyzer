@@ -3,7 +3,7 @@ import os
 import datetime
 from dotenv import load_dotenv
 from src.config import LEAGUE_IDS, LEAGUE_EMOJIS
-from src.utils import get_matches_by_date, extract_text_from_pdf
+from src.utils import get_matches_by_date, extract_text_from_pdf, get_detailed_stats
 from src.analyzer import analyze_match_with_gpt4
 
 # Load environment variables
@@ -90,9 +90,19 @@ if st.session_state.selected_match:
                     text = extract_text_from_pdf(uploaded_file)
                     pdf_text += f"\n--- FILE: {uploaded_file.name} ---\n{text}\n"
                 
-                # 2. Analyze with AI
+                # 2. Get Official Stats (RapidAPI)
+                # Ensure we have IDs (backward compatibility check)
+                h_id = match.get('home_id')
+                a_id = match.get('away_id')
+                
+                if h_id and a_id:
+                    rapid_stats = get_detailed_stats(h_id, a_id)
+                else:
+                    rapid_stats = "Official Stats Unavailable (Missing Team IDs)"
+
+                # 3. Analyze with AI
                 match_name = f"{match['home']} vs {match['away']}"
-                analysis_result = analyze_match_with_gpt4(pdf_text, match_name)
+                analysis_result = analyze_match_with_gpt4(pdf_text, match_name, rapid_stats)
                 
                 if "error" in analysis_result:
                     st.error(analysis_result["error"])
