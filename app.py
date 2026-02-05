@@ -115,7 +115,7 @@ if page == "Elemző":
     else:
         st.sidebar.info("Nincs meccs a követett ligákban.")
 
-    st.title("🤖 GPT-4o Foci Elemző")
+    st.title("🤖 GPT-4o Foci Elemző v3.0 (MENTÉS AKTÍV) ✅")
 
     if st.session_state.selected_match:
         match = st.session_state.selected_match
