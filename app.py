@@ -173,6 +173,55 @@ st.markdown("""
         background: #3a7bd5; 
         border-radius: 5px;
     }
+
+    /* Prediction Card Design */
+    .prediction-card {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 16px;
+        border-left: 5px solid #3a7bd5; /* Default blue */
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .prediction-card:hover {
+        transform: translateY(-2px);
+    }
+    .prediction-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .prediction-market {
+        font-size: 1.1em;
+        font-weight: 700;
+        color: #fff;
+    }
+    .prediction-value {
+        font-size: 1.2em;
+        font-weight: 800;
+        color: #00d2ff;
+        margin-top: 5px;
+    }
+    .confidence-box {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 5px 10px;
+        border-radius: 6px;
+        font-size: 0.9em;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .reasoning-text {
+        font-size: 0.95em;
+        color: #e0e0e0;
+        line-height: 1.6;
+        margin-top: 15px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 10px;
+        font-style: italic;
+    }
     </style>
     
     <!-- Animated Fireflies Injected Here -->
@@ -215,18 +264,18 @@ else:
     selected_league = None # Reset if no matches
 
 # Main Content
-st.title("🤖 GPT-4o Football Analyst")
+st.title("🤖 GPT-4o Foci Elemző")
 
 if st.session_state.selected_match:
     match = st.session_state.selected_match
-    st.header(f"Match Analysis: {match['home']} vs {match['away']}")
+    st.header(f"Mérkőzés Elemzés: {match['home']} vs {match['away']}")
     
     # PDF Upload
-    uploaded_files = st.file_uploader("Upload Match Stats (PDF)", type="pdf", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Statisztikák Feltöltése (PDF)", type="pdf", accept_multiple_files=True)
     
     if uploaded_files:
-        if st.button("Analyze Match 🚀"):
-            with st.spinner("Extracting data and crunching numbers with GPT-4o..."):
+        if st.button("Elemzés Indítása 🚀"):
+            with st.spinner("Adatok kinyerése és elemzés a GPT-4o modellel..."):
                 # 1. Extract Text
                 pdf_text = ""
                 for uploaded_file in uploaded_files:
@@ -241,42 +290,61 @@ if st.session_state.selected_match:
                     st.error(analysis_result["error"])
                 else:
                     # 3. Display Results
-                    st.success("Analysis Complete!")
+                    st.success("Elemzés kész! 📊")
                     
-                    # Sort by confidence (if not already sorted by API, but we did prompt for it)
-                    # We assume the AI returns a list under a key, e.g., "predictions"
-                    # If the AI returns a flat dict, we adapt.
-                    # Our prompt asked for a list. Let's handle the response structure safely.
-                    
+                    # Sort by confidence
                     predictions = analysis_result.get("predictions", [])
                     if not predictions and isinstance(analysis_result, list):
                         predictions = analysis_result
                     
                     # Display sorted by confidence
-                    st.subheader("🏆 Top Predictions (Sorted by Confidence)")
+                    st.subheader("🏆 AI Tippek (Magabiztosság szerint)")
                     
                     for pred in predictions:
                         confidence = pred.get("confidence", 0)
-                        color = "green" if confidence > 75 else "orange" if confidence > 50 else "red"
+                        market = pred.get("market", "Ismeretlen piac")
+                        pick = pred.get("prediction", "N/A")
+                        reasoning = pred.get("reasoning", "Nincs indoklás.")
                         
-                        with st.container():
-                            col1, col2, col3 = st.columns([2, 1, 4])
-                            with col1:
-                                st.markdown(f"**{pred.get('market')}**")
-                                st.write(f"Pick: {pred.get('prediction')}")
-                            with col2:
-                                st.markdown(f"**{confidence}%**")
-                                st.progress(confidence / 100)
-                            with col3:
-                                st.caption(pred.get('reasoning'))
-                            st.divider()
+                        # Dynamic colors based on confidence
+                        if confidence >= 80:
+                            border_color = "#4CAF50" # Green
+                            icon = "🔥"
+                        elif confidence >= 60:
+                            border_color = "#FFC107" # Amber
+                            icon = "⚠️"
+                        else:
+                            border_color = "#FF5722" # Red
+                            icon = "🎲"
+                        
+                        # Render HTML Card
+                        html_card = f"""
+                        <div class="prediction-card" style="border-left: 5px solid {border_color};">
+                            <div class="prediction-header">
+                                <div>
+                                    <div class="prediction-market">{icon} {market}</div>
+                                    <div class="prediction-value" style="color: {border_color};">{pick}</div>
+                                </div>
+                                <div class="confidence-box" style="color: {border_color};">
+                                    {confidence}% Magabiztosság
+                                </div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.1); height: 8px; border-radius: 4px; width: 100%; margin: 15px 0;">
+                                <div style="background: {border_color}; height: 100%; border-radius: 4px; width: {confidence}%;"></div>
+                            </div>
+                            <div class="reasoning-text">
+                                💡 {reasoning}
+                            </div>
+                        </div>
+                        """
+                        st.markdown(html_card, unsafe_allow_html=True)
 
 else:
-    st.info("👈 Please select a match from the sidebar to begin.")
+    st.info("👈 Válassz egy meccset a bal oldali sávból a kezdéshez!")
     st.markdown("""
-    ### How to use:
-    1. Open a **League** in the sidebar.
-    2. Click on a **Match**.
-    3. Upload a **PDF** containing the stats.
-    4. Get **GPT-4o** powered predictions sorted by confidence!
+    ### Használati útmutató:
+    1. Válassz egy **Bajnokságot** a bal oldalon.
+    2. Kattints egy **Meccsre**.
+    3. Töltsd fel a **PDF statisztikákat** (opcionális, de ajánlott).
+    4. Kattints az **Analyze Match** gombra a GPT-4o elemzéshez!
     """)
