@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import datetime
+import random
 from dotenv import load_dotenv
 from src.config import LEAGUE_IDS, LEAGUE_EMOJIS
 from src.utils import get_active_leagues_and_matches, extract_text_from_pdf, get_detailed_stats
@@ -11,6 +12,29 @@ load_dotenv()
 
 # Page Config
 st.set_page_config(page_title="AI Football Analyst", page_icon="⚽", layout="wide")
+
+# --- FIREFLY ANIMATION GENERATOR ---
+# Generate random fireflies with inline styles for position and animation timing
+firefly_html = ""
+for i in range(30):
+    left = random.randint(0, 100)
+    top = random.randint(0, 100)
+    delay = random.uniform(0, 20)
+    duration = random.uniform(10, 20)
+    # Random movement range
+    move_x = random.randint(-50, 50)
+    move_y = random.randint(-50, 50)
+    
+    firefly_html += f"""
+    <div class="firefly" style="
+        left: {left}%; 
+        top: {top}%; 
+        animation-delay: {delay}s; 
+        animation-duration: {duration}s;
+        --move-x: {move_x}px;
+        --move-y: {move_y}px;
+    "></div>
+    """
 
 # --- AUTHENTICATION ---
 def check_password():
@@ -60,40 +84,31 @@ st.markdown("""
         color: #fff;
     }
     
-    /* Particles / Fireflies */
+    /* Particles / Fireflies CSS */
     .firefly {
         position: fixed;
-        left: 50%;
-        top: 50%;
-        width: 0.4vw;
-        height: 0.4vw;
-        margin: -0.2vw 0 0 -9.8vw;
-        animation: ease 200s alternate infinite;
-        pointer-events: none;
-        z-index: -1;
-    }
-    
-    .firefly::before,
-    .firefly::after {
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: 100%;
+        width: 6px;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.5);
         border-radius: 50%;
-        transform-origin: -10vw;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
+        pointer-events: none;
+        z-index: 0; /* Changed to 0 to be visible but behind text if containers have background */
+        animation: float-firefly 15s infinite alternate ease-in-out;
     }
-    
-    .firefly::before {
-        background: black;
-        opacity: 0.4;
-        animation: drift ease alternate infinite;
-    }
-    
-    .firefly::after {
-        background: white;
-        opacity: 0;
-        box-shadow: 0 0 0vw 0vw yellow;
-        animation: drift ease alternate infinite, flash ease infinite;
+
+    @keyframes float-firefly {
+        0% {
+            transform: translate(0, 0);
+            opacity: 0.2;
+        }
+        50% {
+            opacity: 1;
+        }
+        100% {
+            transform: translate(var(--move-x, 30px), var(--move-y, -30px));
+            opacity: 0.2;
+        }
     }
     
     /* UI Components */
@@ -160,21 +175,9 @@ st.markdown("""
     }
     </style>
     
-    <!-- Animated Orbs -->
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; pointer-events: none;">
-        <div style="position: absolute; top: 20%; left: 10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(0,210,255,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 10s infinite ease-in-out;"></div>
-        <div style="position: absolute; top: 70%; left: 80%; width: 200px; height: 200px; background: radial-gradient(circle, rgba(255,0,150,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 15s infinite ease-in-out reverse;"></div>
-        <div style="position: absolute; top: 40%; left: 60%; width: 150px; height: 150px; background: radial-gradient(circle, rgba(0,255,100,0.1) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 12s infinite ease-in-out 2s;"></div>
-        <div style="position: absolute; top: 80%; left: 20%; width: 250px; height: 250px; background: radial-gradient(circle, rgba(255,200,0,0.1) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 18s infinite ease-in-out 1s;"></div>
-    </div>
+    <!-- Animated Fireflies Injected Here -->
+    {firefly_html}
     
-    <style>
-    @keyframes float {
-        0% { transform: translate(0, 0); }
-        50% { transform: translate(20px, -40px); }
-        100% { transform: translate(0, 0); }
-    }
-    </style>
 """, unsafe_allow_html=True)
 
 # Sidebar - League Selection (Dropdown to save API calls)
