@@ -18,49 +18,51 @@ def get_todays_matches(league_name):
 
     # Get today's date in YYYY-MM-DD format
     today = datetime.date.today().strftime("%Y-%m-%d")
+    current_year = datetime.date.today().year
 
     url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
-    querystring = {
-        "date": today,
-        "league": str(league_id),
-        "season": "2024" # Defaulting to current season, might need logic for overlapping seasons (2024/2025)
-        # Note: API-Football usually handles 'current' season logic well, but year is required.
-        # For 2025 date, we should probably check if it's 2024 or 2025 season.
-        # Let's try to infer or just try 2024 first as it covers 24/25.
-    }
-    
-    # Simple logic: If month is > 6, it's likely the start of 'year', else 'year-1' for European leagues.
-    # But South American leagues are calendar year.
-    # To be safe, we can try to fetch the current season for the league first, OR just try 2024/2025.
-    # For simplicity in this MVP, we will try 2025 since today is 2026 in the user's prompt context?
-    # Wait, <env> says "Today's date: 2026-02-05". So season is likely 2025 or 2026.
-    # Let's assume 2025 for European (25/26) or 2026 for Calendar.
-    # We will set season to 2025 as a safe bet for Feb 2026 (end of 25/26 season).
-    querystring["season"] = "2025" 
-
     headers = {
         "x-rapidapi-key": api_key,
         "x-rapidapi-host": "api-football-v1.p.rapidapi.com"
     }
 
-    try:
-        response = requests.get(url, headers=headers, params=querystring)
-        data = response.json()
-        
-        matches = []
-        if "response" in data:
-            for fixture in data["response"]:
-                match_info = {
-                    "home": fixture["teams"]["home"]["name"],
-                    "away": fixture["teams"]["away"]["name"],
-                    "time": fixture["fixture"]["date"][11:16], # Extract HH:MM
-                    "id": fixture["fixture"]["id"]
-                }
-                matches.append(match_info)
-        return matches
-    except Exception as e:
-        print(f"Error fetching matches: {e}")
-        return []
+    # Try seasons: current year and previous year (to cover fall-spring seasons like 2024/2025)
+    seasons_to_check = [current_year, current_year - 1]
+    
+    all_matches = []
+    
+    for season in seasons_to_check:
+        querystring = {
+            "date": today,
+            "league": str(league_id),
+            "season": str(season)
+        }
+
+        try:
+            response = requests.get(url, headers=headers, params=querystring)
+            data = response.json()
+            
+            if "response" in data:
+                for fixture in data["response"]:
+                    match_info = {
+                        "home": fixture["teams"]["home"]["name"],
+                        "away": fixture["teams"]["away"]["name"],
+                        "time": fixture["fixture"]["date"][11:16], # Extract HH:MM
+                        "id": fixture["fixture"]["id"]
+                    }
+                    all_matches.append(match_info)
+            
+            # If we found matches in this season, we can likely stop (optimization), 
+            # but some leagues might have weird overlaps or we want to be sure.
+            # However, usually a league only has matches in one active season per day.
+            if all_matches:
+                break
+                
+        except Exception as e:
+            print(f"Error fetching matches for season {season}: {e}")
+            continue
+
+    return all_matches
 
 def extract_text_from_pdf(uploaded_file):
     """
