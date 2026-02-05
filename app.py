@@ -27,16 +27,10 @@ for i in range(50):  # Increased count to 50
     # Randomly choose between Gold and White
     if random.choice([True, False]):
         # Gold
-        color_style = """
-            background: rgba(212, 175, 55, 0.6);
-            box-shadow: 0 0 10px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);
-        """
+        color_style = "background: rgba(212, 175, 55, 0.6); box-shadow: 0 0 10px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);"
     else:
         # Bright White
-        color_style = """
-            background: rgba(255, 255, 255, 0.8);
-            box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 25px rgba(255, 255, 255, 0.6);
-        """
+        color_style = "background: rgba(255, 255, 255, 0.8); box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 25px rgba(255, 255, 255, 0.6);"
 
     firefly_html += f"""
     <div class="firefly" style="
