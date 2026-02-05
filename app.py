@@ -124,12 +124,11 @@ st.markdown("""
     /* Navigation Tabs (Simulated) */
     div[role="radiogroup"] {
         display: flex;
-        justify-content: center;
-        background: rgba(255,255,255,0.05);
-        padding: 10px;
-        border-radius: 20px;
-        margin-bottom: 30px;
-        border: 1px solid #333;
+        justify-content: flex-end; /* Align to right for parallel layout */
+        background: transparent;
+        padding: 5px;
+        border: none;
+        margin-top: 10px; /* Vertical align with title */
     }
     
     /* Expander */
@@ -147,12 +146,14 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- NAVIGATION ---
-# Centered Title "The King AI"
-st.markdown("<h1 style='text-align: center; font-size: 3.5rem; margin-bottom: 0px;'>👑 The King AI</h1>", unsafe_allow_html=True)
+# Side-by-Side Header Layout (Parallelism)
+col_header_left, col_header_right = st.columns([1, 1.5])
 
-# Top Horizontal Menu (replaces Sidebar Menu)
-col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
-with col_m2:
+with col_header_left:
+    st.markdown("<h1 style='text-align: left; font-size: 3rem; margin: 0; padding-top: 0;'>👑 The King AI</h1>", unsafe_allow_html=True)
+
+with col_header_right:
+    # Menu aligned to the right via CSS (justify-content: flex-end)
     page = st.radio("Navigáció", ["Elemző", "Mentett Elemzések", "Tipptörténet"], horizontal=True, label_visibility="collapsed")
 
 st.markdown("---")
