@@ -12,6 +12,39 @@ load_dotenv()
 # Page Config
 st.set_page_config(page_title="AI Football Analyst", page_icon="⚽", layout="wide")
 
+# --- AUTHENTICATION ---
+def check_password():
+    """Returns `True` if the user had the correct password."""
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if st.session_state["password"] == os.getenv("SITE_PASSWORD", "admin123"):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show input for password.
+        st.text_input(
+            "Kérlek add meg a jelszót az oldal megtekintéséhez:", type="password", on_change=password_entered, key="password"
+        )
+        return False
+    elif not st.session_state["password_correct"]:
+        # Password not correct, show input + error.
+        st.text_input(
+            "Kérlek add meg a jelszót az oldal megtekintéséhez:", type="password", on_change=password_entered, key="password"
+        )
+        st.error("😕 Helytelen jelszó")
+        return False
+    else:
+        # Password correct.
+        return True
+
+if not check_password():
+    st.stop()
+# ----------------------
+
 # Custom CSS for dark mode and styling
 st.markdown("""
     <style>
@@ -90,19 +123,9 @@ if st.session_state.selected_match:
                     text = extract_text_from_pdf(uploaded_file)
                     pdf_text += f"\n--- FILE: {uploaded_file.name} ---\n{text}\n"
                 
-                # 2. Get Official Stats (RapidAPI)
-                # Ensure we have IDs (backward compatibility check)
-                h_id = match.get('home_id')
-                a_id = match.get('away_id')
-                
-                if h_id and a_id:
-                    rapid_stats = get_detailed_stats(h_id, a_id)
-                else:
-                    rapid_stats = "Official Stats Unavailable (Missing Team IDs)"
-
-                # 3. Analyze with AI
+                # 2. Analyze with AI (PDF ONLY - No RapidAPI Stats)
                 match_name = f"{match['home']} vs {match['away']}"
-                analysis_result = analyze_match_with_gpt4(pdf_text, match_name, rapid_stats)
+                analysis_result = analyze_match_with_gpt4(pdf_text, match_name)
                 
                 if "error" in analysis_result:
                     st.error(analysis_result["error"])
