@@ -47,7 +47,7 @@ for i in range(50):  # Increased count to 50
 # --- AUTHENTICATION ---
 def check_password():
     def password_entered():
-        if st.session_state["password"] == os.getenv("SITE_PASSWORD", "admin123"):
+        if st.session_state["password"] == os.getenv("SITE_PASSWORD", "Realmadrid3!"):
             st.session_state["password_correct"] = True
             del st.session_state["password"]
         else:
