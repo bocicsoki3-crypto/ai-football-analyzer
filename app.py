@@ -14,27 +14,6 @@ load_dotenv()
 # Page Config
 st.set_page_config(page_title="AI Football Analyst", page_icon="⚽", layout="wide")
 
-# --- FIREFLY ANIMATION GENERATOR ---
-firefly_html = ""
-for i in range(30):
-    left = random.randint(0, 100)
-    top = random.randint(0, 100)
-    delay = random.uniform(0, 20)
-    duration = random.uniform(10, 20)
-    move_x = random.randint(-50, 50)
-    move_y = random.randint(-50, 50)
-    
-    firefly_html += f"""
-    <div class="firefly" style="
-        left: {left}%; 
-        top: {top}%; 
-        animation-delay: {delay}s; 
-        animation-duration: {duration}s;
-        --move-x: {move_x}px;
-        --move-y: {move_y}px;
-    "></div>
-    """
-
 # --- AUTHENTICATION ---
 def check_password():
     def password_entered():
@@ -57,37 +36,126 @@ def check_password():
 if not check_password():
     st.stop()
 
-# Custom CSS
-st.markdown(f"""
+# Custom CSS - Black & Gold Theme ("The King AI")
+st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-    html, body, [class*="css"] {{ font-family: 'Poppins', sans-serif; }}
-    .stApp {{ background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e); color: #fff; }}
-    .firefly {{
-        position: fixed; width: 6px; height: 6px; background: rgba(255, 255, 255, 0.5);
-        border-radius: 50%; box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 0 20px rgba(255, 255, 255, 0.4);
-        pointer-events: none; z-index: 0; animation: float-firefly 15s infinite alternate ease-in-out;
-    }}
-    @keyframes float-firefly {{
-        0% {{ transform: translate(0, 0); opacity: 0.2; }}
-        50% {{ opacity: 1; }}
-        100% {{ transform: translate(var(--move-x, 30px), var(--move-y, -30px)); opacity: 0.2; }}
-    }}
-    .stButton>button {{
-        width: 100%; border-radius: 8px; min-height: 50px;
-        background: linear-gradient(90deg, #2E86C1 0%, #1B4F72 100%); color: white; border: none;
-    }}
-    .prediction-card {{
-        background: rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 20px;
-        margin-bottom: 16px; border-left: 5px solid #3a7bd5; backdrop-filter: blur(10px);
-    }}
+    /* Global Settings */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+    html, body, [class*="css"] { font-family: 'Poppins', sans-serif; }
+    
+    /* Black & Gold Theme Background */
+    .stApp {
+        background-color: #050505;
+        background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #000000 80%);
+        color: #e0e0e0;
+    }
+    
+    /* Headings */
+    h1, h2, h3 { 
+        color: #D4AF37 !important; 
+        text-shadow: 0 0 15px rgba(212, 175, 55, 0.2); 
+        font-weight: 700;
+    }
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #0a0a0a;
+        border-right: 1px solid #222;
+    }
+    [data-testid="stSidebar"] h1 {
+        font-size: 1.5rem;
+    }
+    
+    /* Buttons (Gold Gradient) */
+    .stButton>button {
+        background: linear-gradient(135deg, #B8860B 0%, #8B6508 100%);
+        color: #fff;
+        font-weight: bold;
+        border: 1px solid #D4AF37;
+        border-radius: 8px;
+        min-height: 45px;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    .stButton>button:hover {
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 10px 20px rgba(212, 175, 55, 0.3);
+        background: linear-gradient(135deg, #FFD700 0%, #D4AF37 100%);
+        color: #000;
+        border-color: #FFD700;
+    }
+    
+    /* File Uploader */
+    [data-testid="stFileUploader"] {
+        border: 2px dashed #444;
+        border-radius: 12px;
+        padding: 30px;
+        background: rgba(255,255,255,0.03);
+        transition: all 0.3s;
+    }
+    [data-testid="stFileUploader"]:hover {
+        border-color: #D4AF37;
+        background: rgba(212, 175, 55, 0.05);
+        transform: scale(1.01);
+    }
+    
+    /* Prediction Cards */
+    .prediction-card {
+        background: linear-gradient(145deg, #111, #161616);
+        border: 1px solid #333;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .prediction-card:hover {
+        transform: translateY(-5px) scale(1.01);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        border-color: #555;
+    }
+    
+    /* Inputs (Date, Selectbox) */
+    .stDateInput, .stSelectbox {
+        color: white;
+    }
+    
+    /* Navigation Tabs (Simulated) */
+    div[role="radiogroup"] {
+        display: flex;
+        justify-content: center;
+        background: rgba(255,255,255,0.05);
+        padding: 10px;
+        border-radius: 20px;
+        margin-bottom: 30px;
+        border: 1px solid #333;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background-color: #111;
+        color: #D4AF37;
+        border: 1px solid #333;
+        border-radius: 8px;
+    }
+    .streamlit-expanderHeader:hover {
+        color: #FFD700;
+        border-color: #D4AF37;
+    }
     </style>
-    {firefly_html}
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.title("📱 Menü")
-page = st.sidebar.radio("Válassz oldalt:", ["Elemző", "Mentett Elemzések", "Tipptörténet"])
+# --- NAVIGATION ---
+# Centered Title "The King AI"
+st.markdown("<h1 style='text-align: center; font-size: 3.5rem; margin-bottom: 0px;'>👑 The King AI</h1>", unsafe_allow_html=True)
+
+# Top Horizontal Menu (replaces Sidebar Menu)
+col_m1, col_m2, col_m3 = st.columns([1, 2, 1])
+with col_m2:
+    page = st.radio("Navigáció", ["Elemző", "Mentett Elemzések", "Tipptörténet"], horizontal=True, label_visibility="collapsed")
+
+st.markdown("---")
 
 # --- PAGE: ELEMZŐ ---
 if page == "Elemző":
@@ -114,9 +182,6 @@ if page == "Elemző":
                     st.session_state.analysis_result = None # Reset analysis on new match
     else:
         st.sidebar.info("Nincs meccs a követett ligákban.")
-
-    # Centered Title "The King AI"
-    st.markdown("<h1 style='text-align: center;'>👑 The King AI</h1>", unsafe_allow_html=True)
 
     if st.session_state.selected_match:
         match = st.session_state.selected_match
