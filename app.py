@@ -16,7 +16,7 @@ st.set_page_config(page_title="AI Football Analyst", page_icon="⚽", layout="wi
 
 # --- FIREFLY ANIMATION GENERATOR ---
 firefly_html = ""
-for i in range(30):
+for i in range(50):  # Increased count to 50
     left = random.randint(0, 100)
     top = random.randint(0, 100)
     delay = random.uniform(0, 20)
@@ -24,6 +24,20 @@ for i in range(30):
     move_x = random.randint(-50, 50)
     move_y = random.randint(-50, 50)
     
+    # Randomly choose between Gold and White
+    if random.choice([True, False]):
+        # Gold
+        color_style = """
+            background: rgba(212, 175, 55, 0.6);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);
+        """
+    else:
+        # Bright White
+        color_style = """
+            background: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.9), 0 0 25px rgba(255, 255, 255, 0.6);
+        """
+
     firefly_html += f"""
     <div class="firefly" style="
         left: {left}%; 
@@ -32,6 +46,7 @@ for i in range(30):
         animation-duration: {duration}s;
         --move-x: {move_x}px;
         --move-y: {move_y}px;
+        {color_style}
     "></div>
     """
 
@@ -69,9 +84,7 @@ st.markdown("""
         position: fixed;
         width: 6px;
         height: 6px;
-        background: rgba(212, 175, 55, 0.6); /* Gold tint */
         border-radius: 50%;
-        box-shadow: 0 0 10px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);
         pointer-events: none;
         z-index: 9999; /* On top but click-through */
         animation: float-firefly 15s infinite alternate ease-in-out;
