@@ -3,7 +3,7 @@ import os
 import datetime
 from dotenv import load_dotenv
 from src.config import LEAGUE_IDS, LEAGUE_EMOJIS
-from src.utils import get_matches_by_date, extract_text_from_pdf, get_detailed_stats
+from src.utils import get_active_leagues_and_matches, extract_text_from_pdf, get_detailed_stats
 from src.analyzer import analyze_match_with_gpt4
 
 # Load environment variables
