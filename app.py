@@ -56,8 +56,44 @@ st.markdown("""
 
     /* Animated Background */
     .stApp {
-        background-color: #0f0c29;
+        background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
         color: #fff;
+    }
+    
+    /* Particles / Fireflies */
+    .firefly {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        width: 0.4vw;
+        height: 0.4vw;
+        margin: -0.2vw 0 0 -9.8vw;
+        animation: ease 200s alternate infinite;
+        pointer-events: none;
+        z-index: -1;
+    }
+    
+    .firefly::before,
+    .firefly::after {
+        content: '';
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        transform-origin: -10vw;
+    }
+    
+    .firefly::before {
+        background: black;
+        opacity: 0.4;
+        animation: drift ease alternate infinite;
+    }
+    
+    .firefly::after {
+        background: white;
+        opacity: 0;
+        box-shadow: 0 0 0vw 0vw yellow;
+        animation: drift ease alternate infinite, flash ease infinite;
     }
     
     /* UI Components */
@@ -99,7 +135,7 @@ st.markdown("""
 
     h1, h2, h3 {
         color: #00d2ff;
-        text-shadow: none;
+        text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
     }
 
     .match-card {
@@ -108,6 +144,7 @@ st.markdown("""
         border-radius: 15px;
         margin-bottom: 10px;
         background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(10px);
     }
     
     /* Custom Scrollbar */
@@ -120,6 +157,22 @@ st.markdown("""
     ::-webkit-scrollbar-thumb {
         background: #3a7bd5; 
         border-radius: 5px;
+    }
+    </style>
+    
+    <!-- Animated Orbs -->
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; pointer-events: none;">
+        <div style="position: absolute; top: 20%; left: 10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(0,210,255,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 10s infinite ease-in-out;"></div>
+        <div style="position: absolute; top: 70%; left: 80%; width: 200px; height: 200px; background: radial-gradient(circle, rgba(255,0,150,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 15s infinite ease-in-out reverse;"></div>
+        <div style="position: absolute; top: 40%; left: 60%; width: 150px; height: 150px; background: radial-gradient(circle, rgba(0,255,100,0.1) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 12s infinite ease-in-out 2s;"></div>
+        <div style="position: absolute; top: 80%; left: 20%; width: 250px; height: 250px; background: radial-gradient(circle, rgba(255,200,0,0.1) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 18s infinite ease-in-out 1s;"></div>
+    </div>
+    
+    <style>
+    @keyframes float {
+        0% { transform: translate(0, 0); }
+        50% { transform: translate(20px, -40px); }
+        100% { transform: translate(0, 0); }
     }
     </style>
 """, unsafe_allow_html=True)
