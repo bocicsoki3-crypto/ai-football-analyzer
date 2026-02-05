@@ -2,11 +2,12 @@ import requests
 import datetime
 import os
 import streamlit as st
+import pypdf
 
 @st.cache_data(ttl=3600) # Cache for 1 hour
-def get_todays_matches(league_name):
+def get_matches_by_date(league_name, date_str):
     """
-    Fetches today's matches for a specific league using RapidAPI.
+    Fetches matches for a specific league and date using RapidAPI.
     Cached for 1 hour to prevent API quota exhaustion.
     """
     from src.config import LEAGUE_IDS # Import here to avoid circular dependency if any
@@ -19,9 +20,8 @@ def get_todays_matches(league_name):
     if not league_id:
         return []
 
-    # Get today's date in YYYY-MM-DD format
-    today = datetime.date.today().strftime("%Y-%m-%d")
-    current_year = datetime.date.today().year
+    # Parse year from date string (YYYY-MM-DD)
+    current_year = int(date_str[:4])
 
     url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
     headers = {
@@ -30,13 +30,14 @@ def get_todays_matches(league_name):
     }
 
     # Try seasons: current year and previous year (to cover fall-spring seasons like 2024/2025)
+    # If the match is in 2026, we check 2026 and 2025.
     seasons_to_check = [current_year, current_year - 1]
     
     all_matches = []
     
     for season in seasons_to_check:
         querystring = {
-            "date": today,
+            "date": date_str,
             "league": str(league_id),
             "season": str(season)
         }
@@ -55,9 +56,7 @@ def get_todays_matches(league_name):
                     }
                     all_matches.append(match_info)
             
-            # If we found matches in this season, we can likely stop (optimization), 
-            # but some leagues might have weird overlaps or we want to be sure.
-            # However, usually a league only has matches in one active season per day.
+            # If we found matches in this season, we can likely stop (optimization)
             if all_matches:
                 break
                 

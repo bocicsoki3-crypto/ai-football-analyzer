@@ -1,8 +1,9 @@
 import streamlit as st
 import os
+import datetime
 from dotenv import load_dotenv
 from src.config import LEAGUE_IDS, LEAGUE_EMOJIS
-from src.utils import get_todays_matches, extract_text_from_pdf
+from src.utils import get_matches_by_date, extract_text_from_pdf
 from src.analyzer import analyze_match_with_gpt4
 
 # Load environment variables
@@ -47,13 +48,17 @@ st.sidebar.title("📌 Bajnokságok")
 if 'selected_match' not in st.session_state:
     st.session_state.selected_match = None
 
+# 0. Select Date
+selected_date = st.sidebar.date_input("Dátum választás", datetime.date.today())
+date_str = selected_date.strftime("%Y-%m-%d")
+
 # 1. Select League
 league_names = list(LEAGUE_IDS.keys())
 selected_league = st.sidebar.selectbox("Válassz bajnokságot:", league_names)
 
 # 2. Fetch matches for SELECTED league only
 if selected_league:
-    matches = get_todays_matches(selected_league)
+    matches = get_matches_by_date(selected_league, date_str)
     
     st.sidebar.markdown(f"**{LEAGUE_EMOJIS.get(selected_league, '⚽')} {selected_league}**")
     
@@ -64,7 +69,7 @@ if selected_league:
             if st.sidebar.button(btn_label, key=f"{selected_league}_{match['id']}"):
                 st.session_state.selected_match = match
     else:
-        st.sidebar.info("Ma nincs meccs ebben a ligában.")
+        st.sidebar.info("Ezen a napon nincs meccs ebben a ligában.")
 
 # Main Content
 st.title("🤖 GPT-4o Football Analyst")
@@ -74,13 +79,16 @@ if st.session_state.selected_match:
     st.header(f"Match Analysis: {match['home']} vs {match['away']}")
     
     # PDF Upload
-    uploaded_file = st.file_uploader("Upload Match Stats (PDF)", type="pdf")
+    uploaded_files = st.file_uploader("Upload Match Stats (PDF)", type="pdf", accept_multiple_files=True)
     
-    if uploaded_file is not None:
+    if uploaded_files:
         if st.button("Analyze Match 🚀"):
             with st.spinner("Extracting data and crunching numbers with GPT-4o..."):
                 # 1. Extract Text
-                pdf_text = extract_text_from_pdf(uploaded_file)
+                pdf_text = ""
+                for uploaded_file in uploaded_files:
+                    text = extract_text_from_pdf(uploaded_file)
+                    pdf_text += f"\n--- FILE: {uploaded_file.name} ---\n{text}\n"
                 
                 # 2. Analyze with AI
                 match_name = f"{match['home']} vs {match['away']}"
