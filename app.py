@@ -14,6 +14,27 @@ load_dotenv()
 # Page Config
 st.set_page_config(page_title="AI Football Analyst", page_icon="⚽", layout="wide")
 
+# --- FIREFLY ANIMATION GENERATOR ---
+firefly_html = ""
+for i in range(30):
+    left = random.randint(0, 100)
+    top = random.randint(0, 100)
+    delay = random.uniform(0, 20)
+    duration = random.uniform(10, 20)
+    move_x = random.randint(-50, 50)
+    move_y = random.randint(-50, 50)
+    
+    firefly_html += f"""
+    <div class="firefly" style="
+        left: {left}%; 
+        top: {top}%; 
+        animation-delay: {delay}s; 
+        animation-duration: {duration}s;
+        --move-x: {move_x}px;
+        --move-y: {move_y}px;
+    "></div>
+    """
+
 # --- AUTHENTICATION ---
 def check_password():
     def password_entered():
@@ -37,12 +58,30 @@ if not check_password():
     st.stop()
 
 # Custom CSS - Black & Gold Theme ("The King AI")
-st.markdown("""
+st.markdown(f"""
     <style>
     /* Global Settings */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Poppins', sans-serif; }
+    html, body, [class*="css"] {{ font-family: 'Poppins', sans-serif; }}
     
+    /* Firefly Animation */
+    .firefly {{
+        position: fixed;
+        width: 6px;
+        height: 6px;
+        background: rgba(212, 175, 55, 0.6); /* Gold tint */
+        border-radius: 50%;
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.8), 0 0 20px rgba(212, 175, 55, 0.4);
+        pointer-events: none;
+        z-index: 9999; /* On top but click-through */
+        animation: float-firefly 15s infinite alternate ease-in-out;
+    }}
+    @keyframes float-firefly {{
+        0% {{ transform: translate(0, 0); opacity: 0.2; }}
+        50% {{ opacity: 1; }}
+        100% {{ transform: translate(var(--move-x, 30px), var(--move-y, -30px)); opacity: 0.2; }}
+    }}
+
     /* Black & Gold Theme Background */
     .stApp {
         background-color: #050505;
@@ -143,6 +182,7 @@ st.markdown("""
         border-color: #D4AF37;
     }
     </style>
+    {firefly_html}
 """, unsafe_allow_html=True)
 
 # --- NAVIGATION ---
