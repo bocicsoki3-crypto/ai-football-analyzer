@@ -58,14 +58,14 @@ if not check_password():
     st.stop()
 
 # Custom CSS - Black & Gold Theme ("The King AI")
-st.markdown(f"""
+st.markdown("""
     <style>
     /* Global Settings */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-    html, body, [class*="css"] {{ font-family: 'Poppins', sans-serif; }}
+    html, body, [class*="css"] { font-family: 'Poppins', sans-serif; }
     
     /* Firefly Animation */
-    .firefly {{
+    .firefly {
         position: fixed;
         width: 6px;
         height: 6px;
@@ -75,12 +75,12 @@ st.markdown(f"""
         pointer-events: none;
         z-index: 9999; /* On top but click-through */
         animation: float-firefly 15s infinite alternate ease-in-out;
-    }}
-    @keyframes float-firefly {{
-        0% {{ transform: translate(0, 0); opacity: 0.2; }}
-        50% {{ opacity: 1; }}
-        100% {{ transform: translate(var(--move-x, 30px), var(--move-y, -30px)); opacity: 0.2; }}
-    }}
+    }
+    @keyframes float-firefly {
+        0% { transform: translate(0, 0); opacity: 0.2; }
+        50% { opacity: 1; }
+        100% { transform: translate(var(--move-x, 30px), var(--move-y, -30px)); opacity: 0.2; }
+    }
 
     /* Black & Gold Theme Background */
     .stApp {
@@ -182,8 +182,7 @@ st.markdown(f"""
         border-color: #D4AF37;
     }
     </style>
-    {firefly_html}
-""", unsafe_allow_html=True)
+""" + firefly_html, unsafe_allow_html=True)
 
 # --- NAVIGATION ---
 # Side-by-Side Header Layout (Parallelism)
