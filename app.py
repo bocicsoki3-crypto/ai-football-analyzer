@@ -56,65 +56,32 @@ st.markdown("""
 
     /* Animated Background */
     .stApp {
-        background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+        background-color: #0f0c29;
         color: #fff;
     }
-    
-    /* Particles */
-    .firefly {
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        width: 0.4vw;
-        height: 0.4vw;
-        margin: -0.2vw 0 0 -9.8vw;
-        animation: ease 200s alternate infinite;
-        pointer-events: none;
-        z-index: -1;
-    }
-    
-    .firefly::before,
-    .firefly::after {
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        border-radius: 50%;
-        transform-origin: -10vw;
-    }
-    
-    .firefly::before {
-        background: black;
-        opacity: 0.4;
-        animation: drift ease alternate infinite;
-    }
-    
-    .firefly::after {
-        background: white;
-        opacity: 0;
-        box-shadow: 0 0 0vw 0vw yellow;
-        animation: drift ease alternate infinite, flash ease infinite;
-    }
-    
-    /* Randomize fireflies using nth-child would be hard in pure CSS injection without HTML structure control. 
-       Instead, we will use a simpler "floating orbs" approach with fixed divs injected below. */
     
     /* UI Components */
     .stButton>button {
         width: 100%;
-        border-radius: 12px;
-        height: 3.5em;
-        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%);
+        border-radius: 8px;
+        min-height: 60px; /* Uniform height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(90deg, #2E86C1 0%, #1B4F72 100%);
         color: white;
         border: none;
         font-weight: 600;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+        white-space: normal; /* Allow wrapping for long names */
+        padding: 5px 10px;
+        line-height: 1.2;
     }
     
     .stButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2);
     }
 
     .stTextInput>div>div>input {
@@ -132,7 +99,7 @@ st.markdown("""
 
     h1, h2, h3 {
         color: #00d2ff;
-        text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+        text-shadow: none;
     }
 
     .match-card {
@@ -141,7 +108,6 @@ st.markdown("""
         border-radius: 15px;
         margin-bottom: 10px;
         background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
     }
     
     /* Custom Scrollbar */
@@ -154,22 +120,6 @@ st.markdown("""
     ::-webkit-scrollbar-thumb {
         background: #3a7bd5; 
         border-radius: 5px;
-    }
-    </style>
-    
-    <!-- Animated Orbs -->
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; overflow: hidden; pointer-events: none;">
-        <div style="position: absolute; top: 20%; left: 10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(0,210,255,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 10s infinite ease-in-out;"></div>
-        <div style="position: absolute; top: 70%; left: 80%; width: 200px; height: 200px; background: radial-gradient(circle, rgba(255,0,150,0.15) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 15s infinite ease-in-out reverse;"></div>
-        <div style="position: absolute; top: 40%; left: 60%; width: 150px; height: 150px; background: radial-gradient(circle, rgba(0,255,100,0.1) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 12s infinite ease-in-out 2s;"></div>
-        <div style="position: absolute; top: 80%; left: 20%; width: 250px; height: 250px; background: radial-gradient(circle, rgba(255,200,0,0.1) 0%, rgba(0,0,0,0) 70%); border-radius: 50%; animation: float 18s infinite ease-in-out 1s;"></div>
-    </div>
-    
-    <style>
-    @keyframes float {
-        0% { transform: translate(0, 0); }
-        50% { transform: translate(20px, -40px); }
-        100% { transform: translate(0, 0); }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -185,24 +135,28 @@ if 'selected_match' not in st.session_state:
 selected_date = st.sidebar.date_input("Dátum választás", datetime.date.today())
 date_str = selected_date.strftime("%Y-%m-%d")
 
-# 1. Select League
-league_names = list(LEAGUE_IDS.keys())
-selected_league = st.sidebar.selectbox("Válassz bajnokságot:", league_names)
+# 1. Fetch ALL matches for this date and filter by our leagues
+with st.spinner("Meccsek betöltése..."):
+    organized_matches = get_active_leagues_and_matches(date_str)
 
-# 2. Fetch matches for SELECTED league only
-if selected_league:
-    matches = get_matches_by_date(selected_league, date_str)
+# 2. League Selector (Only show leagues with matches)
+if organized_matches:
+    active_leagues = sorted(list(organized_matches.keys()))
+    selected_league = st.sidebar.selectbox("Válassz bajnokságot (csak aktívak):", active_leagues)
     
-    st.sidebar.markdown(f"**{LEAGUE_EMOJIS.get(selected_league, '⚽')} {selected_league}**")
-    
-    if matches:
+    if selected_league:
+        st.sidebar.markdown(f"**{LEAGUE_EMOJIS.get(selected_league, '⚽')} {selected_league}**")
+        
+        matches = organized_matches[selected_league]
         for match in matches:
-            btn_label = f"{match['home']} vs {match['away']} ({match['time']})"
-            # Use a unique key combining league and match ID
-            if st.sidebar.button(btn_label, key=f"{selected_league}_{match['id']}"):
+            # Button Label with Date and Time
+            btn_label = f"{match['home']} vs {match['away']}\n({match['date']} {match['time']})"
+            
+            if st.sidebar.button(btn_label, key=match['id'], use_container_width=True):
                 st.session_state.selected_match = match
-    else:
-        st.sidebar.info("Ezen a napon nincs meccs ebben a ligában.")
+else:
+    st.sidebar.info("Ezen a napon nincs meccs a követett ligákban.")
+    selected_league = None # Reset if no matches
 
 # Main Content
 st.title("🤖 GPT-4o Football Analyst")

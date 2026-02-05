@@ -5,68 +5,67 @@ import streamlit as st
 import pypdf
 
 @st.cache_data(ttl=3600) # Cache for 1 hour
-def get_matches_by_date(league_name, date_str):
+def get_active_leagues_and_matches(date_str):
     """
-    Fetches matches for a specific league and date using RapidAPI.
-    Cached for 1 hour to prevent API quota exhaustion.
+    Fetches ALL matches for a specific date globally, then filters them
+    to keep only the leagues we track (defined in LEAGUE_IDS).
+    Returns a dictionary: { "Premier League (ENG)": [match_list], ... }
     """
-    from src.config import LEAGUE_IDS # Import here to avoid circular dependency if any
+    from src.config import LEAGUE_IDS # Import here
 
     api_key = os.getenv("RAPIDAPI_KEY")
     if not api_key:
-        return []
+        return {}
 
-    league_id = LEAGUE_IDS.get(league_name)
-    if not league_id:
-        return []
-
-    # Parse year from date string (YYYY-MM-DD)
-    current_year = int(date_str[:4])
+    # Create a reverse mapping: ID -> Name
+    # We use this to quickly identify if a match belongs to a league we care about.
+    id_to_league_name = {v: k for k, v in LEAGUE_IDS.items()}
 
     url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
     headers = {
         "x-rapidapi-key": api_key,
         "x-rapidapi-host": "api-football-v1.p.rapidapi.com"
     }
-
-    # Try seasons: current year and previous year (to cover fall-spring seasons like 2024/2025)
-    # If the match is in 2026, we check 2026 and 2025.
-    seasons_to_check = [current_year, current_year - 1]
     
-    all_matches = []
-    
-    for season in seasons_to_check:
-        querystring = {
-            "date": date_str,
-            "league": str(league_id),
-            "season": str(season)
-        }
+    # Fetch ALL matches for this date
+    querystring = {"date": date_str, "timezone": "Europe/Budapest"} # Optional: set timezone to local
 
-        try:
-            response = requests.get(url, headers=headers, params=querystring)
-            data = response.json()
-            
-            if "response" in data:
-                for fixture in data["response"]:
+    try:
+        response = requests.get(url, headers=headers, params=querystring)
+        data = response.json()
+        
+        organized_matches = {}
+
+        if "response" in data:
+            for fixture in data["response"]:
+                league_id = fixture["fixture"]["venue"].get("id") # Warning: venue id is not league id
+                # Correct path for league id: fixture['league']['id']
+                league_id = fixture["league"]["id"]
+                
+                # Check if this league is in our tracked list
+                if league_id in id_to_league_name:
+                    league_name = id_to_league_name[league_id]
+                    
                     match_info = {
                         "home": fixture["teams"]["home"]["name"],
                         "away": fixture["teams"]["away"]["name"],
                         "home_id": fixture["teams"]["home"]["id"],
                         "away_id": fixture["teams"]["away"]["id"],
                         "time": fixture["fixture"]["date"][11:16], # Extract HH:MM
+                        "date": fixture["fixture"]["date"][:10],   # Extract YYYY-MM-DD
                         "id": fixture["fixture"]["id"]
                     }
-                    all_matches.append(match_info)
-            
-            # If we found matches in this season, we can likely stop (optimization)
-            if all_matches:
-                break
-                
-        except Exception as e:
-            print(f"Error fetching matches for season {season}: {e}")
-            continue
+                    
+                    if league_name not in organized_matches:
+                        organized_matches[league_name] = []
+                    
+                    organized_matches[league_name].append(match_info)
+        
+        return organized_matches
 
-    return all_matches
+    except Exception as e:
+        print(f"Error fetching global matches: {e}")
+        return {}
 
 def extract_text_from_pdf(uploaded_file):
     """
