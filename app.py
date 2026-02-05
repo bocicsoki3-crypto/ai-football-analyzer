@@ -270,11 +270,13 @@ if st.session_state.selected_match:
     match = st.session_state.selected_match
     st.header(f"Mérkőzés Elemzés: {match['home']} vs {match['away']}")
     
-    # PDF Upload
-    uploaded_files = st.file_uploader("Statisztikák Feltöltése (PDF)", type="pdf", accept_multiple_files=True)
+    # Form for Upload and Analysis to prevent stuttering
+    with st.form("analysis_form"):
+        uploaded_files = st.file_uploader("Statisztikák Feltöltése (PDF)", type="pdf", accept_multiple_files=True)
+        submitted = st.form_submit_button("Elemzés Indítása 🚀")
     
-    if uploaded_files:
-        if st.button("Elemzés Indítása 🚀"):
+    if submitted:
+        if uploaded_files:
             with st.spinner("Adatok kinyerése és elemzés a GPT-4o modellel..."):
                 # 1. Extract Text
                 pdf_text = ""
@@ -338,6 +340,8 @@ if st.session_state.selected_match:
                         </div>
                         """
                         st.markdown(html_card, unsafe_allow_html=True)
+        else:
+            st.warning("⚠️ Kérlek tölts fel legalább egy PDF fájlt az elemzéshez!")
 
 else:
     st.info("👈 Válassz egy meccset a bal oldali sávból a kezdéshez!")
