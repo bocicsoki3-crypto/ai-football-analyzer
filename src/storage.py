@@ -3,6 +3,7 @@ import os
 import uuid
 
 DATA_FILE = "data/saved_tips.json"
+ANALYSIS_FILE = "data/saved_analyses.json"
 
 def load_tips():
     """Loads tips from the JSON file."""
@@ -60,3 +61,41 @@ def delete_tip(tip_id):
     tips = [t for t in tips if t["id"] != tip_id]
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(tips, f, indent=4, ensure_ascii=False)
+
+# --- ANALYSIS STORAGE ---
+
+def load_analyses():
+    """Loads saved analyses from the JSON file."""
+    if not os.path.exists(ANALYSIS_FILE):
+        return []
+    try:
+        with open(ANALYSIS_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+def save_analysis(analysis_data):
+    """Saves a full analysis report."""
+    analyses = load_analyses()
+    
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(ANALYSIS_FILE), exist_ok=True)
+    
+    if "id" not in analysis_data:
+        analysis_data["id"] = str(uuid.uuid4())
+    
+    # Check if analysis for this match already exists, update if so (optional, but good for idempotency)
+    # For now, we just append a new one or replace if ID exists
+    
+    analyses.append(analysis_data)
+    
+    with open(ANALYSIS_FILE, "w", encoding="utf-8") as f:
+        json.dump(analyses, f, indent=4, ensure_ascii=False)
+
+def delete_analysis(analysis_id):
+    """Deletes an analysis by ID."""
+    analyses = load_analyses()
+    analyses = [a for a in analyses if a.get("id") != analysis_id]
+    with open(ANALYSIS_FILE, "w", encoding="utf-8") as f:
+        json.dump(analyses, f, indent=4, ensure_ascii=False)
+

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from src.config import LEAGUE_IDS, LEAGUE_EMOJIS
 from src.utils import get_active_leagues_and_matches, extract_text_from_pdf, get_detailed_stats
 from src.analyzer import analyze_match_with_gpt4
-from src.storage import save_tip, load_tips, update_tip_status, delete_tip
+from src.storage import save_tip, load_tips, update_tip_status, delete_tip, save_analysis, load_analyses, delete_analysis
 
 # Load environment variables
 load_dotenv()
@@ -87,7 +87,7 @@ st.markdown(f"""
 
 # --- SIDEBAR NAVIGATION ---
 st.sidebar.title("📱 Menü")
-page = st.sidebar.radio("Válassz oldalt:", ["Elemző", "Tipptörténet"])
+page = st.sidebar.radio("Válassz oldalt:", ["Elemző", "Mentett Elemzések", "Tipptörténet"])
 
 # --- PAGE: ELEMZŐ ---
 if page == "Elemző":
@@ -115,7 +115,8 @@ if page == "Elemző":
     else:
         st.sidebar.info("Nincs meccs a követett ligákban.")
 
-    st.title("🤖 GPT-4o Foci Elemző v3.0 (MENTÉS AKTÍV) ✅")
+    # Centered Title "The King AI"
+    st.markdown("<h1 style='text-align: center;'>👑 The King AI</h1>", unsafe_allow_html=True)
 
     if st.session_state.selected_match:
         match = st.session_state.selected_match
@@ -151,6 +152,17 @@ if page == "Elemző":
                 st.info(f"**📝 Elemzés Összefoglaló:**\n\n{summary}")
                 
                 predictions = res.get("predictions", [])
+                
+                # Save Full Analysis Button
+                if st.button("💾 TELJES Elemzés Mentése (Későbbi megtekintéshez)"):
+                     full_analysis_data = {
+                         "match_name": f"{match['home']} vs {match['away']}",
+                         "date": match['date'],
+                         "full_result": res, # Save the entire JSON result
+                         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                     }
+                     save_analysis(full_analysis_data)
+                     st.success("Teljes elemzés elmentve a 'Mentett Elemzések' menüpontba! 📚")
                 
                 # We wrap the checkboxes in a form to allow batch saving
                 st.subheader("🏆 AI Tippek (Válaszd ki a mentendőket):")
@@ -200,6 +212,47 @@ if page == "Elemző":
 
     else:
         st.info("👈 Válassz meccset a menüből!")
+
+# --- PAGE: MENTETT ELEMZÉSEK ---
+elif page == "Mentett Elemzések":
+    st.title("📚 Mentett Elemzések")
+    
+    analyses = load_analyses()
+    
+    if not analyses:
+        st.info("Nincs mentett elemzés.")
+    else:
+        # Reverse list to show newest first
+        for analysis in reversed(analyses):
+             with st.expander(f"📅 {analysis['match_name']} ({analysis['timestamp']})"):
+                 # Reconstruct the view
+                 res = analysis['full_result']
+                 
+                 # Summary
+                 st.info(f"**📝 Elemzés Összefoglaló:**\n\n{res.get('summary', 'Nincs adat')}")
+                 
+                 # Predictions
+                 predictions = res.get("predictions", [])
+                 for pred in predictions:
+                        confidence = pred.get("confidence", 0)
+                        market = pred.get("market", "N/A")
+                        pick = pred.get("prediction", "N/A")
+                        reasoning = pred.get("reasoning", "")
+                        
+                        color = "#4CAF50" if confidence >= 80 else "#FFC107" if confidence >= 60 else "#FF5722"
+                        
+                        st.markdown(f"""
+                        <div class="prediction-card" style="border-left: 5px solid {color};">
+                            <h3 style="margin:0; color: white;">{market}: <span style="color:{color}">{pick}</span></h3>
+                            <p style="color: #ccc; font-size: 0.9em;">Magabiztosság: {confidence}%</p>
+                            <p style="font-style: italic; font-size: 0.9em;">{reasoning}</p>
+                        </div>
+                        """, unsafe_allow_html=True)
+                 
+                 if st.button("Törlés", key=f"del_anal_{analysis['id']}"):
+                     delete_analysis(analysis['id'])
+                     st.rerun()
+
 
 # --- PAGE: TIPPTÖRTÉNET ---
 elif page == "Tipptörténet":
