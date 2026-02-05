@@ -1,0 +1,51 @@
+# League ID Mapping (RapidAPI - API-Football)
+LEAGUE_IDS = {
+    "Premier League (ENG)": 39,
+    "La Liga (ESP)": 140,
+    "La Liga 2 (ESP)": 141,
+    "Bundesliga (GER)": 78,
+    "2. Bundesliga (GER)": 79,
+    "Serie A (ITA)": 135,
+    "Serie B (ITA)": 136,
+    "Ligue 1 (FRA)": 61,
+    "Ligue 2 (FRA)": 62,
+    "Eredivisie (NED)": 88,
+    "Liga Portugal (POR)": 94,
+    "Super Lig (TUR)": 203,
+    "Liga Profesional (ARG)": 128,
+    "Serie A (BRA)": 71,
+    "Serie B (BRA)": 72,
+    "A-League (AUS)": 188,
+    "Primera A (COL)": 239,
+    "Liga MX (MEX)": 262,
+    "MLS (USA)": 253,
+    "Champions League": 2,
+    "Europa League": 3,
+    "Conference League": 848
+}
+
+# Mapping for flag emojis or simple display
+LEAGUE_EMOJIS = {
+    "Premier League (ENG)": "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
+    "La Liga (ESP)": "🇪🇸",
+    "La Liga 2 (ESP)": "🇪🇸",
+    "Bundesliga (GER)": "🇩🇪",
+    "2. Bundesliga (GER)": "🇩🇪",
+    "Serie A (ITA)": "🇮🇹",
+    "Serie B (ITA)": "🇮🇹",
+    "Ligue 1 (FRA)": "🇫🇷",
+    "Ligue 2 (FRA)": "🇫🇷",
+    "Eredivisie (NED)": "🇳🇱",
+    "Liga Portugal (POR)": "🇵🇹",
+    "Super Lig (TUR)": "🇹🇷",
+    "Liga Profesional (ARG)": "🇦🇷",
+    "Serie A (BRA)": "🇧🇷",
+    "Serie B (BRA)": "🇧🇷",
+    "A-League (AUS)": "🇦🇺",
+    "Primera A (COL)": "🇨🇴",
+    "Liga MX (MEX)": "🇲🇽",
+    "MLS (USA)": "🇺🇸",
+    "Champions League": "🇪🇺",
+    "Europa League": "🇪🇺",
+    "Conference League": "🇪🇺"
+}
